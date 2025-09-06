@@ -2,10 +2,10 @@
 set -e
 
 rm -rf actual
-cp -r before/ actual/
+cp -r original/ actual/
 
 cd actual
-git apply ../suggest.diff
+git apply ../suggestion.diff
 cd ..
 
 if diff -u expect actual | grep .; then
