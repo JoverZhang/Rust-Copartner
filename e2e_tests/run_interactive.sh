@@ -4,13 +4,13 @@ set -e
 DAEMON_OPTIONS="--mock --host 127.0.0.1 --port 9875"
 CLIENT_OPTIONS="--host 127.0.0.1 --port 9875"
 
-PYTHON_EXEC=../../python/.venv/bin/python
-FIX_DIFF_SCRIPT="$PYTHON_EXEC ../../utils/fix_diff.py"
+PYTHON_EXEC=../../../python/.venv/bin/python
+FIX_DIFF_SCRIPT="$PYTHON_EXEC ../../../utils/fix_diff.py"
 
-DAEMON_EXEC="$PYTHON_EXEC ../../rust-copartner-daemon.py"
-CLIENT_EXEC="$PYTHON_EXEC ../../rust-copartner-client.py"
+DAEMON_EXEC="$PYTHON_EXEC ../../../rust-copartner-daemon.py"
+CLIENT_EXEC="$PYTHON_EXEC ../../../rust-copartner-client.py"
 
-for scene in e2e_tests/*; do
+for scene in interactive/*; do
   echo "🧪 Running E2E test: $scene"
   cd $scene
 
@@ -52,6 +52,9 @@ for scene in e2e_tests/*; do
     cd ../..
     exit 1
   fi
+
+  # Clean up
+  rm -rf actual edited.diff
 
   cd ..
 done

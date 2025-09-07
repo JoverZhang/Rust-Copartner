@@ -4,26 +4,41 @@ Rust Copartner is a tool for suggesting changes to a Rust project.
 
 ## Usage
 
-Start a rust-copartner daemon:
+Rust Copartner works in two modes:
+
+**Interactive**: Infers your intended changes based on your last modification and provides relevant suggestions.  
+**Prompt**: Allows you to describe the desired changes and generates a complete diff across multiple files.
+
+### Setup
+
+Start the daemon:
 
 ```bash
 python rust-copartner-daemon.py <project_dir> [options]
 ```
 
-Common options:
+Daemon options:
 
 - `-p, --port`: Port to run the server on (default: 9876)
 - `--host`: Host to bind to (default: 0.0.0.0)
 - `--mock`: Use mock LLM for development/testing
 - `--reload`: Enable auto-reload for development
 
-Execute the following command to ask suggestions:
+### Client Usage
+
+**Interactive mode** - Send a diff:
 
 ```bash
 python rust-copartner-client.py <diff_file> [options]
 ```
 
-Common options:
+**Prompt mode** - Describe changes:
+
+```bash
+python rust-copartner-client.py --prompt "Make Point struct 3D" [options]
+```
+
+Client options:
 
 - `-p, --port`: Port of the daemon server (default: 9876)
 - `--host`: Host of the daemon server (default: localhost)
@@ -31,14 +46,14 @@ Common options:
 
 ## Example
 
-### Scene 1
+### Interactive Mode - Scene 1
 
-> You can find an example in the `e2e_tests/scene1` directory.
+> You can find an example in the `e2e_tests/interactive/scene1` directory.
 
 We can use the `rust-copartner-daemon.py` to start a daemon server to watch this project.
 
 ```bash
-python rust-copartner-daemon.py e2e_tests/scene1/original
+python rust-copartner-daemon.py e2e_tests/interactive/scene1/original
 ```
 
 Source code of `main.rs` before change:
@@ -138,6 +153,55 @@ fn main() {
     println!("p = {:?}", p);
 }
 
+```
+
+### Prompt Mode - Scene 1
+
+> You can find an example in the `e2e_tests/prompt/scene1` directory.
+
+Start the daemon with the same original project:
+
+```bash
+python rust-copartner-daemon.py e2e_tests/prompt/scene1/original
+```
+
+Instead of sending a diff, describe what you want:
+
+```bash
+python rust-copartner-client.py --prompt "Make Point struct 3D"
+```
+
+The LLM will analyze the project and generate a complete diff:
+
+```diff
+Suggested changes:
+--- a/main.rs
++++ b/main.rs
+@@ -1,16 +1,17 @@
+ #[derive(Debug, Clone, Copy, PartialEq)]
+-struct Point {
++struct Point3D {
+     x: i32,
+     y: i32,
++    z: i32,
+ }
+ 
+-impl Point {
+-    fn new(x: i32, y: i32) -> Self {
+-        Self { x, y }
++impl Point3D {
++    fn new(x: i32, y: i32, z: i32) -> Self {
++        Self { x, y, z }
+     }
+ }
+ 
+ fn main() {
+-    let p = Point::new(1, 2);
++    let p = Point3D::new(1, 2, 3);
+     println!("p = {:?}", p);
+ }
+
+Accept? (y/n): y
 ```
 
 ## Architecture
