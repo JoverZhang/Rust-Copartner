@@ -148,6 +148,66 @@ class RustCopartnerWorkflow:
                 error_message=f"Workflow error: {str(e)}"
             )
     
+    async def process_prompt(
+        self,
+        prompt: str,
+        project_path: str
+    ) -> WorkflowResult:
+        """
+        Process natural language prompt and generate suggestions
+        
+        Args:
+            prompt: Natural language description of desired changes
+            project_path: Path to the project root
+            
+        Returns:
+            Workflow result with suggestions or error
+        """
+        try:
+            # Extract identifiers and concepts from prompt
+            print(f"Processing prompt: {prompt}")
+            identifiers = await self._extract_identifiers_from_prompt(prompt)
+            print(f"Extracted identifiers from prompt: {identifiers}")
+            
+            # Collect project context based on prompt-derived identifiers
+            project_context = await self._collect_project_context(project_path, identifiers)
+            
+            # Find the main file that likely needs to be changed (heuristic)
+            main_file_path = await self._find_main_file_for_prompt(prompt, project_path)
+            if not main_file_path:
+                return WorkflowResult(
+                    diff_content="",
+                    project_path=project_path,
+                    success=False,
+                    error_message="Could not find a relevant file to modify based on the prompt"
+                )
+            
+            # Read the main file content
+            with open(main_file_path, 'r') as f:
+                original_content = f.read()
+            
+            # Generate suggestions using prompt mode
+            suggestion_result = await self.suggestion_generator.generate_prompt_suggestion(
+                prompt=prompt,
+                original_file_content=original_content,
+                project_context=project_context
+            )
+            
+            return WorkflowResult(
+                diff_content="",  # No input diff for prompt mode
+                project_path=project_path,
+                success=True,
+                suggestion_result=suggestion_result
+            )
+            
+        except Exception as e:
+            return WorkflowResult(
+                diff_content="",
+                project_path=project_path,
+                success=False,
+                error_message=f"Prompt workflow error: {str(e)}"
+            )
+    
     async def _find_relevant_file(self, diff_content: str, project_path: str) -> Optional[str]:
         """
         Find the file that was changed according to the diff
@@ -322,3 +382,113 @@ class RustCopartnerWorkflow:
                             snippets.append(formatted_snippet)
         
         return snippets
+    
+    async def _extract_identifiers_from_prompt(self, prompt: str) -> Set[str]:
+        """
+        Extract identifiers and concepts from natural language prompt
+        
+        Args:
+            prompt: Natural language prompt
+            
+        Returns:
+            Set of relevant identifiers to search for
+        """
+        identifiers = set()
+        
+        # Simple keyword extraction from prompt
+        words = re.findall(r'\b\w+\b', prompt.lower())
+        
+        # Look for common programming concepts
+        rust_keywords = {
+            'struct', 'impl', 'fn', 'enum', 'trait', 'mod', 'pub', 'use',
+            'point', 'point3d', '3d', 'new', 'main', 'println'
+        }
+        
+        # Add words that look like identifiers or are Rust keywords
+        for word in words:
+            if (word.isidentifier() and len(word) > 2) or word in rust_keywords:
+                identifiers.add(word)
+                # Also add capitalized versions for structs/types
+                identifiers.add(word.capitalize())
+                identifiers.add(word.upper())
+        
+        # Extract quoted strings that might be identifiers
+        quoted_strings = re.findall(r'"([^"]+)"', prompt) + re.findall(r"'([^']+)'", prompt)
+        for s in quoted_strings:
+            if s.isidentifier():
+                identifiers.add(s)
+        
+        # Look for CamelCase and snake_case patterns
+        camel_case_pattern = re.findall(r'\b[A-Z][a-z]+(?:[A-Z][a-z]*)*\b', prompt)
+        snake_case_pattern = re.findall(r'\b[a-z]+(?:_[a-z]+)*\b', prompt)
+        
+        identifiers.update(camel_case_pattern)
+        identifiers.update(snake_case_pattern)
+        
+        return identifiers
+    
+    async def _find_main_file_for_prompt(self, prompt: str, project_path: str) -> Optional[str]:
+        """
+        Find the main file that should be modified based on the prompt
+        
+        Args:
+            prompt: Natural language prompt
+            project_path: Project root path
+            
+        Returns:
+            Path to the most relevant file or None if not found
+        """
+        try:
+            # Extract identifiers from prompt
+            identifiers = await self._extract_identifiers_from_prompt(prompt)
+            
+            # Find all Rust files
+            rust_files = list(self._find_rust_files(project_path))
+            
+            # Score files based on relevance to prompt identifiers
+            file_scores = []
+            for file_path in rust_files:
+                try:
+                    with open(file_path, 'r') as f:
+                        content = f.read()
+                    
+                    # Count how many identifiers appear in this file
+                    score = 0
+                    content_lower = content.lower()
+                    for identifier in identifiers:
+                        if identifier.lower() in content_lower:
+                            score += 1
+                            # Bonus for struct/impl definitions
+                            if f"struct {identifier}" in content or f"impl {identifier}" in content:
+                                score += 3
+                    
+                    if score > 0:
+                        file_scores.append((file_path, score))
+                        
+                except Exception:
+                    continue
+            
+            # Return the file with the highest score
+            if file_scores:
+                file_scores.sort(key=lambda x: x[1], reverse=True)
+                return file_scores[0][0]
+            
+            # Fallback: look for main.rs or lib.rs
+            fallback_files = [
+                Path(project_path) / "main.rs",
+                Path(project_path) / "src" / "main.rs",
+                Path(project_path) / "src" / "lib.rs",
+            ]
+            
+            for path in fallback_files:
+                if path.exists():
+                    return str(path)
+            
+            # Last resort: return any .rs file
+            if rust_files:
+                return rust_files[0]
+            
+            return None
+            
+        except Exception:
+            return None

@@ -103,6 +103,95 @@ class SuggestionGenerator:
         
         return result
     
+    async def generate_prompt_suggestion(
+        self,
+        prompt: str,
+        original_file_content: str,
+        project_context: List[str]
+    ) -> SuggestionResult:
+        """
+        Generate complete suggestion based on natural language prompt
+        
+        Args:
+            prompt: Natural language description of desired changes
+            original_file_content: Original file content before changes
+            project_context: List of relevant code fragments from project
+            
+        Returns:
+            Complete suggestion result
+        """
+        # Generate base suggestion from prompt
+        base_result = await self.generate_base_prompt_suggestion(
+            prompt, original_file_content, project_context
+        )
+        
+        # Generate final diff
+        final_result = await self.generate_final_suggestion(
+            base_result.base_suggestion, original_file_content
+        )
+        
+        # Combine results
+        result = SuggestionResult(
+            diff_content="",  # No input diff for prompt mode
+            original_content=original_file_content,
+            base_suggestion=base_result.base_suggestion,
+            final_diff=final_result.final_diff,
+            project_context=project_context
+        )
+        
+        # Validate the suggestion
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.rs', delete=False) as temp_file:
+            temp_file.write(original_file_content)
+            temp_file.flush()
+            
+            try:
+                result.is_valid = await self.validate_suggestion(
+                    result.final_diff, temp_file.name
+                )
+            finally:
+                os.unlink(temp_file.name)
+        
+        return result
+    
+    async def generate_base_prompt_suggestion(
+        self,
+        prompt: str,
+        original_file_content: str,
+        project_context: List[str]
+    ) -> SuggestionResult:
+        """
+        Generate base suggestion based on natural language prompt
+        
+        Args:
+            prompt: Natural language description of desired changes
+            original_file_content: Original file content
+            project_context: Relevant code fragments
+            
+        Returns:
+            Result with base suggestion
+        """
+        # Format context for LLM
+        formatted_context = self._format_project_context(project_context)
+        
+        # Create prompt for base suggestion from natural language
+        llm_prompt = self._create_prompt_suggestion_prompt(
+            prompt, original_file_content, formatted_context
+        )
+        
+        # Generate base suggestion using LLM
+        response = await self.llm_client.generate(
+            llm_prompt,
+            system_message="You are a Rust code assistant that helps implement changes based on natural language descriptions.",
+            temperature=0.3
+        )
+        
+        return SuggestionResult(
+            diff_content="",  # No input diff for prompt mode
+            original_content=original_file_content,
+            base_suggestion=response.content,
+            project_context=project_context
+        )
+    
     async def generate_base_suggestion(
         self,
         diff_content: str,
@@ -306,6 +395,33 @@ Based on the change shown in the diff and the project context, please suggest wh
 4. Any potential issues or improvements
 
 Please provide a clear, concise suggestion for what should be changed."""
+    
+    def _create_prompt_suggestion_prompt(
+        self, 
+        prompt: str, 
+        original_content: str, 
+        formatted_context: str
+    ) -> str:
+        """Create prompt for generating suggestions from natural language prompts"""
+        context_section = f"Relevant project context:\n{formatted_context}\n\n" if formatted_context.strip() else ""
+        
+        return f"""You are tasked with implementing the following change request:
+
+"{prompt}"
+
+Here is the current file content:
+```rust
+{original_content}
+```
+
+{context_section}Please analyze the request and provide a detailed explanation of what changes should be made to implement the requested feature. Consider:
+
+1. What structures, functions, or implementations need to be modified
+2. What new code needs to be added
+3. How the changes should maintain compatibility with existing code
+4. Any imports or dependencies that might be needed
+
+Provide a clear, step-by-step explanation of the changes needed."""
     
     def _create_final_diff_prompt(self, base_suggestion: str, original_content: str) -> str:
         """Create prompt for final diff generation"""

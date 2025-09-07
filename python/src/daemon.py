@@ -27,6 +27,11 @@ class SuggestionRequest(BaseModel):
     diff_content: str
 
 
+class PromptRequest(BaseModel):
+    """Request model for prompt-based suggestion generation"""
+    prompt: str
+
+
 class SuggestionResponse(BaseModel):
     """Response model for suggestion generation"""
     success: bool
@@ -156,6 +161,96 @@ async def generate_suggestion(request: SuggestionRequest):
         print(f"⏱️  Processing time: {processing_time:.2f}ms")
         
         # Prepare response
+        if result.success and result.suggestion_result:
+            print("✅ Suggestion generated successfully!")
+            
+            # Log the suggestion content
+            if result.suggestion_result.base_suggestion:
+                print("💡 Suggested improvement:")
+                print("-" * 50)
+                print(result.suggestion_result.base_suggestion)
+                print()
+            
+            # Log the final diff
+            if result.suggestion_result.final_diff:
+                print("📝 Suggested changes (diff format):")
+                print("-" * 50)
+                print(result.suggestion_result.final_diff)
+                print()
+            
+            # Log validation status
+            is_valid = result.suggestion_result.is_valid
+            if is_valid is not None:
+                if is_valid:
+                    print("✅ The suggested changes are valid and can be applied")
+                else:
+                    print("⚠️  The suggested changes may have issues - please review carefully")
+                print()
+            
+            # Generate unique ID for this suggestion
+            suggestion_id = str(uuid.uuid4())
+            
+            # Store suggestion for later application
+            pending_suggestions[suggestion_id] = {
+                "final_diff": result.suggestion_result.final_diff,
+                "timestamp": time.time()
+            }
+            
+            return SuggestionResponse(
+                success=True,
+                suggestion=result.suggestion_result.base_suggestion,
+                final_diff=result.suggestion_result.final_diff,
+                is_valid=result.suggestion_result.is_valid,
+                requires_confirmation=result.suggestion_result.is_valid,
+                suggestion_id=suggestion_id if result.suggestion_result.is_valid else None,
+                processing_time_ms=processing_time
+            )
+        else:
+            return SuggestionResponse(
+                success=False,
+                error_message=result.error_message,
+                processing_time_ms=processing_time
+            )
+    
+    except Exception as e:
+        processing_time = (time.time() - start_time) * 1000 if 'start_time' in locals() else 0
+        return SuggestionResponse(
+            success=False,
+            error_message=f"Internal server error: {str(e)}",
+            processing_time_ms=processing_time
+        )
+
+
+@app.post("/suggest-prompt", response_model=SuggestionResponse)
+async def generate_prompt_suggestion(request: PromptRequest):
+    """Generate code suggestion based on natural language prompt"""
+    global pending_suggestions
+    
+    if workflow is None or project_path is None:
+        raise HTTPException(status_code=503, detail="Workflow not initialized")
+    
+    if not request.prompt or not request.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+    
+    try:
+        import time
+        start_time = time.time()
+        
+        # Log prompt being processed
+        print("💭 Processing prompt:")
+        print(f"Prompt: {request.prompt}")
+        print("🔄 Generating suggestion...")
+        
+        # Process prompt using the configured project path
+        result = await workflow.process_prompt(
+            prompt=request.prompt,
+            project_path=str(project_path)
+        )
+        
+        processing_time = (time.time() - start_time) * 1000  # Convert to ms
+        print(f"⏱️  Processing time: {processing_time:.2f}ms")
+        
+        # Prepare response (same structure as diff-based suggestions)
         if result.success and result.suggestion_result:
             print("✅ Suggestion generated successfully!")
             
@@ -358,6 +453,7 @@ async def root():
         "endpoints": {
             "health": "/health",
             "suggest": "/suggest (POST)",
+            "suggest-prompt": "/suggest-prompt (POST)",
             "apply": "/apply (POST)",
             "docs": "/docs"
         }

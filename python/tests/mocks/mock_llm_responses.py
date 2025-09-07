@@ -74,6 +74,63 @@ fn main() {
      y: i32,
 +    z: i32,
  }"""
+    },
+    "prompt_make_point_3d": {
+        "base_suggestion": """To make the Point struct 3D, I need to:
+
+1. Rename the struct to Point3D to reflect its nature
+2. Add a z coordinate field to represent the third dimension
+3. Update the constructor to accept and initialize the z coordinate
+4. Update all references to use the new struct name and constructor signature
+
+Here's the implementation:
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Point3D {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+impl Point3D {
+    fn new(x: i32, y: i32, z: i32) -> Self {
+        Self { x, y, z }
+    }
+}
+
+fn main() {
+    let p = Point3D::new(1, 2, 3);
+    println!("p = {:?}", p);
+}
+```
+
+This change transforms the 2D Point into a true 3D point with proper initialization.""",
+        "final_diff": """--- a/main.rs
++++ b/main.rs
+@@ -1,16 +1,17 @@
+ #[derive(Debug, Clone, Copy, PartialEq)]
+-struct Point {
++struct Point3D {
+     x: i32,
+     y: i32,
++    z: i32,
+ }
+ 
+-impl Point {
+-    fn new(x: i32, y: i32) -> Self {
+-        Self { x, y }
++impl Point3D {
++    fn new(x: i32, y: i32, z: i32) -> Self {
++        Self { x, y, z }
+     }
+ }
+ 
+ fn main() {
+-    let p = Point::new(1, 2);
++    let p = Point3D::new(1, 2, 3);
+     println!("p = {:?}", p);
+ }"""
     }
 }
 
@@ -105,8 +162,15 @@ def mock_llm_call(prompt: str, **kwargs) -> str:
     """
     prompt_lower = prompt.lower()
     
-    # Analyze prompt to determine appropriate mock response
-    if "point" in prompt_lower and "point3d" in prompt_lower:
+    # Check for prompt mode requests (natural language)
+    if "make point struct 3d" in prompt_lower or ("point" in prompt_lower and "3d" in prompt_lower and "change request" in prompt_lower):
+        if "step-by-step" in prompt_lower or "explanation" in prompt_lower or "analyze" in prompt_lower:
+            return get_mock_response("prompt_make_point_3d", "base_suggestion")
+        else:
+            return get_mock_response("prompt_make_point_3d", "final_diff")
+    
+    # Check for diff-based requests (interactive mode)
+    elif "point" in prompt_lower and "point3d" in prompt_lower:
         if "base suggestion" in prompt_lower or "suggest" in prompt_lower:
             return get_mock_response("struct_rename_point_to_point3d", "base_suggestion")
         else:

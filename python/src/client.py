@@ -36,6 +36,17 @@ class RustCopartnerClient:
             response.raise_for_status()
             return response.json()
     
+    async def suggest_prompt(self, prompt: str) -> Dict[str, Any]:
+        """Generate suggestions from natural language prompt"""
+        payload = {
+            "prompt": prompt
+        }
+        
+        async with httpx.AsyncClient(timeout=self.timeout, proxy=None) as client:
+            response = await client.post(f"{self.base_url}/suggest-prompt", json=payload)
+            response.raise_for_status()
+            return response.json()
+    
     async def apply_suggestion(self, suggestion_id: str, accept: bool) -> Dict[str, Any]:
         """Apply or reject a suggestion"""
         payload = {
@@ -78,7 +89,12 @@ async def main():
     parser = argparse.ArgumentParser(description="Rust Copartner Client")
     parser.add_argument(
         "diff_file",
-        help="Path to the diff file"
+        nargs="?",
+        help="Path to the diff file (required for interactive mode)"
+    )
+    parser.add_argument(
+        "--prompt",
+        help="Natural language prompt describing desired changes (prompt mode)"
     )
     parser.add_argument(
         "-p", "--port",
@@ -105,18 +121,35 @@ async def main():
     
     args = parser.parse_args()
     
-    # Validate and read diff file
-    diff_file_path = Path(args.diff_file)
-    if not diff_file_path.exists():
-        print(f"❌ Diff file not found: {diff_file_path}")
+    # Validate input mode
+    if args.prompt and args.diff_file:
+        print("❌ Cannot use both --prompt and diff file. Choose one mode.")
         sys.exit(1)
     
-    try:
-        with open(diff_file_path, 'r', encoding='utf-8') as f:
-            diff_content = f.read()
-    except Exception as e:
-        print(f"❌ Failed to read diff file: {e}")
+    if not args.prompt and not args.diff_file:
+        print("❌ Must provide either --prompt or diff file.")
         sys.exit(1)
+    
+    # Handle interactive mode (diff file)
+    diff_content = None
+    prompt = None
+    
+    if args.diff_file:
+        diff_file_path = Path(args.diff_file)
+        if not diff_file_path.exists():
+            print(f"❌ Diff file not found: {diff_file_path}")
+            sys.exit(1)
+        
+        try:
+            with open(diff_file_path, 'r', encoding='utf-8') as f:
+                diff_content = f.read()
+        except Exception as e:
+            print(f"❌ Failed to read diff file: {e}")
+            sys.exit(1)
+    
+    # Handle prompt mode
+    if args.prompt:
+        prompt = args.prompt
     
     # Create client
     base_url = f"http://{args.host}:{args.port}"
@@ -130,12 +163,17 @@ async def main():
               f"LLM mode: {health.get('llm_mode', 'unknown')})")
         print()
         
-        # Generate suggestion
-        print(f"📄 Processing diff file: {diff_file_path}")
-        print("🔄 Generating suggestion...")
-        print()
-        
-        result = await client.suggest(diff_content)
+        # Generate suggestion based on mode
+        if diff_content:
+            print(f"📄 Processing diff file: {diff_file_path}")
+            print("🔄 Generating suggestion...")
+            print()
+            result = await client.suggest(diff_content)
+        else:
+            print(f"💭 Processing prompt: {prompt}")
+            print("🔄 Generating suggestion...")
+            print()
+            result = await client.suggest_prompt(prompt)
         
         if args.json:
             # Output JSON result
