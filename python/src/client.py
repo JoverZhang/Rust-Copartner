@@ -50,45 +50,20 @@ class RustCopartnerClient:
 
 
 def print_suggestion_result(result: Dict[str, Any], show_timing: bool = True):
-    """Print suggestion result in a user-friendly format"""
-    if result.get("success"):
-        print("✅ Suggestion generated successfully!")
-        print()
-        
-        # Print base suggestion if available
-        if result.get("suggestion"):
-            print("💡 Suggested improvement:")
-            print("-" * 50)
-            print(result["suggestion"])
-            print()
-        
-        # Print final diff if available
+    """Print suggestion result in a simplified format for client"""
+    if result.get("success"):        
+        # Only print final diff if available
         if result.get("final_diff"):
-            print("📝 Suggested changes (diff format):")
+            print("📝 Suggested changes:")
             print("-" * 50)
             print(result["final_diff"])
             print()
-        
-        # Print validation status
-        is_valid = result.get("is_valid")
-        if is_valid is not None:
-            if is_valid:
-                print("✅ The suggested changes are valid and can be applied")
-            else:
-                print("⚠️  The suggested changes may have issues - please review carefully")
-            print()
-        
-        # Print timing information
-        if show_timing and result.get("processing_time_ms"):
-            print(f"⏱️  Processing time: {result['processing_time_ms']:.2f}ms")
-            print()
     
     else:
-        print("❌ Failed to generate suggestion:")
-        print(f"Error: {result.get('error_message', 'Unknown error')}")
-        
-        if show_timing and result.get("processing_time_ms"):
-            print(f"Processing time: {result['processing_time_ms']:.2f}ms")
+        print("❌ Failed to generate suggestion")
+        if result.get("error_message"):
+            print(f"Error: {result['error_message']}")
+        print()
 
 
 def ask_user_confirmation(suggestion_diff: str) -> bool:

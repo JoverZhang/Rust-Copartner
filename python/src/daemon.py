@@ -141,6 +141,11 @@ async def generate_suggestion(request: SuggestionRequest):
         import time
         start_time = time.time()
         
+        # Log diff content being processed
+        print("📄 Processing diff content:")
+        print(f"Parsing diff content: {request.diff_content}")
+        print("🔄 Generating suggestion...")
+        
         # Process diff using the configured project path
         result = await workflow.process_diff(
             diff_content=request.diff_content,
@@ -148,9 +153,35 @@ async def generate_suggestion(request: SuggestionRequest):
         )
         
         processing_time = (time.time() - start_time) * 1000  # Convert to ms
+        print(f"⏱️  Processing time: {processing_time:.2f}ms")
         
         # Prepare response
         if result.success and result.suggestion_result:
+            print("✅ Suggestion generated successfully!")
+            
+            # Log the suggestion content
+            if result.suggestion_result.base_suggestion:
+                print("💡 Suggested improvement:")
+                print("-" * 50)
+                print(result.suggestion_result.base_suggestion)
+                print()
+            
+            # Log the final diff
+            if result.suggestion_result.final_diff:
+                print("📝 Suggested changes (diff format):")
+                print("-" * 50)
+                print(result.suggestion_result.final_diff)
+                print()
+            
+            # Log validation status
+            is_valid = result.suggestion_result.is_valid
+            if is_valid is not None:
+                if is_valid:
+                    print("✅ The suggested changes are valid and can be applied")
+                else:
+                    print("⚠️  The suggested changes may have issues - please review carefully")
+                print()
+            
             # Generate unique ID for this suggestion
             suggestion_id = str(uuid.uuid4())
             
