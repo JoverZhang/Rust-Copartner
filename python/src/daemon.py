@@ -4,6 +4,7 @@ FastAPI daemon for rust-copartner suggestion service
 
 import os
 import sys
+import traceback
 import argparse
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -12,6 +13,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
+from dotenv import load_dotenv
 
 from .workflow import RustCopartnerWorkflow, WorkflowResult
 import uuid
@@ -113,6 +115,19 @@ async def startup_event():
             workflow = RustCopartnerWorkflow.from_env(use_mock=use_mock)
             
         print(f"🚀 Rust Copartner daemon started with LLM mode: {'mock' if workflow.llm_client.use_mock else 'real'}")
+    except ValueError as e:
+        if "OPENROUTER_API_KEY" in str(e):
+            print("❌ Failed to initialize workflow: Missing OPENROUTER_API_KEY")
+            print("\nTo use real LLM mode:")
+            print("1. Create a .env file in the project root with:")
+            print("   OPENROUTER_API_KEY=your-api-key")
+            print("   OPENROUTER_BASE_URL=https://openrouter.ai/api/v1")
+            print("   OPENROUTER_MODEL=deepseek/deepseek-r1:free")
+            print("\nOr use mock mode for development/testing:")
+            print("   python rust-copartner-daemon.py <project_dir> --mock")
+        else:
+            print(f"❌ Failed to initialize workflow: {e}")
+        sys.exit(1)
     except Exception as e:
         print(f"❌ Failed to initialize workflow: {e}")
         sys.exit(1)
@@ -214,6 +229,7 @@ async def generate_suggestion(request: SuggestionRequest):
     
     except Exception as e:
         processing_time = (time.time() - start_time) * 1000 if 'start_time' in locals() else 0
+        traceback.print_exc()
         return SuggestionResponse(
             success=False,
             error_message=f"Internal server error: {str(e)}",
@@ -467,6 +483,9 @@ def create_app() -> FastAPI:
 
 def main():
     """Main entry point for the daemon"""
+    # Load environment variables from .env file
+    load_dotenv()
+    
     parser = argparse.ArgumentParser(description="Rust Copartner Daemon")
     parser.add_argument(
         "project_dir",

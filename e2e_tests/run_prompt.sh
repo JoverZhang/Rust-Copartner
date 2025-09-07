@@ -2,7 +2,7 @@
 set -e
 
 DAEMON_OPTIONS="--mock --host 127.0.0.1 --port 9874"
-CLIENT_OPTIONS="--host 127.0.0.1 --port 9874"
+CLIENT_OPTIONS="--host 127.0.0.1 --port 9874 --timeout 500"
 
 PYTHON_EXEC=../../../python/.venv/bin/python
 DAEMON_EXEC="$PYTHON_EXEC ../../../rust-copartner-daemon.py"

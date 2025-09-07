@@ -14,7 +14,7 @@ import httpx
 class RustCopartnerClient:
     """Client for communicating with rust-copartner daemon"""
     
-    def __init__(self, base_url: str = "http://localhost:9876", timeout: float = 30.0):
+    def __init__(self, base_url: str = "http://localhost:9876", timeout: float = 300.0):
         self.base_url = base_url.rstrip('/')
         self.timeout = timeout
     
@@ -115,8 +115,8 @@ async def main():
     parser.add_argument(
         "--timeout",
         type=float,
-        default=30.0,
-        help="Request timeout in seconds (default: 30.0)"
+        default=300.0,
+        help="Request timeout in seconds (default: 300.0)"
     )
     
     args = parser.parse_args()
@@ -167,11 +167,13 @@ async def main():
         if diff_content:
             print(f"📄 Processing diff file: {diff_file_path}")
             print("🔄 Generating suggestion...")
+            print("⏳ Please wait while the LLM analyzes your code...")
             print()
             result = await client.suggest(diff_content)
         else:
             print(f"💭 Processing prompt: {prompt}")
             print("🔄 Generating suggestion...")
+            print("⏳ Please wait while the LLM analyzes your request...")
             print()
             result = await client.suggest_prompt(prompt)
         
@@ -207,6 +209,14 @@ async def main():
         print(f"  python rust-copartner-daemon.py <project_dir> -p {args.port}")
         sys.exit(1)
     
+    except httpx.TimeoutException:
+        print(f"❌ Request timed out after {args.timeout} seconds")
+        print("The LLM is taking longer than expected to process your request.")
+        print("You can:")
+        print(f"  1. Increase timeout: --timeout 300 (for 5 minutes)")
+        print("  2. Simplify your request if it's very complex")
+        sys.exit(1)
+    
     except httpx.HTTPStatusError as e:
         print(f"❌ HTTP error: {e.response.status_code}")
         try:
@@ -217,7 +227,16 @@ async def main():
         sys.exit(1)
     
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        error_msg = str(e).lower()
+        if "timeout" in error_msg or "timed out" in error_msg:
+            print(f"❌ Request timed out: {e}")
+            print("The LLM is taking longer than expected to process your request.")
+            print("You can:")
+            print(f"  1. Increase timeout: --timeout 300 (for 5 minutes)")
+            print("  2. Simplify your request if it's very complex")
+            print("  3. Check your network connection")
+        else:
+            print(f"❌ Unexpected error: {e}")
         sys.exit(1)
 
 

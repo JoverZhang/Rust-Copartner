@@ -5,25 +5,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Rust Copartner Client",
+            "name": "Rust Copartner Client (Interactive)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/rust-copartner-client.py",
             "console": "integratedTerminal",
             "args": [
-                "e2e_tests/scene1/last_change.diff",
+                "e2e_tests/interactive/scene1/edited.diff",
             ],
             "python": "${workspaceFolder}/python/.venv/bin/python",
         },
         {
-            "name": "Rust Copartner Daemon",
+            "name": "Rust Copartner Daemon (Interactive)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/rust-copartner-daemon.py",
             "console": "integratedTerminal",
             "args": [
-                "e2e_tests/scene1/original",
-                "--mock"
+                "e2e_tests/interactive/scene1/original",
+                // "--mock"
             ],
             "python": "${workspaceFolder}/python/.venv/bin/python",
         }

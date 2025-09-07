@@ -2,7 +2,7 @@
 set -e
 
 DAEMON_OPTIONS="--mock --host 127.0.0.1 --port 9875"
-CLIENT_OPTIONS="--host 127.0.0.1 --port 9875"
+CLIENT_OPTIONS="--host 127.0.0.1 --port 9875 --timeout 500"
 
 PYTHON_EXEC=../../../python/.venv/bin/python
 FIX_DIFF_SCRIPT="$PYTHON_EXEC ../../../utils/fix_diff.py"
@@ -54,7 +54,7 @@ for scene in interactive/*; do
   fi
 
   # Clean up
-  rm -rf actual edited.diff
+  rm -rf actual
 
   cd ..
 done

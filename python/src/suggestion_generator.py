@@ -5,6 +5,7 @@ Suggestion generator for creating code suggestions based on diffs and context
 import subprocess
 import tempfile
 import os
+import time
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 from pathlib import Path
@@ -46,7 +47,8 @@ class SuggestionGenerator:
         self,
         diff_content: str,
         original_file_content: str,
-        project_context: List[str]
+        project_context: List[str],
+        file_path: Optional[str] = None
     ) -> SuggestionResult:
         """
         Generate complete suggestion including base suggestion and final diff
@@ -107,7 +109,8 @@ class SuggestionGenerator:
         self,
         prompt: str,
         original_file_content: str,
-        project_context: List[str]
+        project_context: List[str],
+        file_path: Optional[str] = None
     ) -> SuggestionResult:
         """
         Generate complete suggestion based on natural language prompt
@@ -220,13 +223,22 @@ class SuggestionGenerator:
         prompt = self._create_base_suggestion_prompt(
             diff_content, original_file_content, diff_context, formatted_context
         )
+        print("📄 Base suggestion prompt:")
+        print("-" * 50)
+        print(prompt)
+        print()
         
         # Generate base suggestion using LLM
+        start_time = time.time()
         response = await self.llm_client.generate(
             prompt,
             system_message="You are a Rust code assistant that helps suggest improvements based on code changes.",
             temperature=0.3
         )
+        print(f"📄 Base suggestion response {time.time() - start_time}ms:")
+        print("-" * 50)
+        print(response.content)
+        print()
         
         return SuggestionResult(
             diff_content=diff_content,
@@ -252,14 +264,26 @@ class SuggestionGenerator:
         """
         # Create prompt for final diff generation
         prompt = self._create_final_diff_prompt(base_suggestion, original_file_content)
+        print(f"📄 Final diff prompt:")
+        print("-" * 50)
+        print(prompt)
+        print()
         
         # Generate final diff using LLM
+        start_time = time.time()
         response = await self.llm_client.generate(
             prompt,
-            system_message="You are a Rust code assistant. Generate only the git diff format output without any explanation.",
+            system_message="""
+You are a Rust code refactoring assistant.  
+Your task: given my natural language request, output ONLY a unified diff patch.  
+""",
             temperature=0.1  # Lower temperature for more consistent diff format
         )
-        
+        print(f"📄 Final diff response {time.time() - start_time}ms:")
+        print("-" * 50)
+        print(response.content)
+        print()
+
         return SuggestionResult(
             diff_content="",
             original_content=original_file_content,
@@ -307,7 +331,17 @@ class SuggestionGenerator:
                         'git', 'apply', '--check', '--verbose', patch_file.name
                     ], capture_output=True, text=True, cwd=os.path.dirname(original_file_path))
                     
-                    return result.returncode == 0
+                    if result.returncode != 0:
+                        print(f"❌ Git apply --check failed: {result.stderr}")
+                        print(f"original file path: {original_file_path}")
+                        print("patch file:")
+                        print("-" * 50)
+                        print(suggestion_diff)
+                        print("-" * 50)
+
+                        return False
+                    else:
+                        return True
                 finally:
                     os.unlink(patch_file.name)
                     
@@ -394,6 +428,8 @@ Based on the change shown in the diff and the project context, please suggest wh
 3. Best practices for the type of change being made
 4. Any potential issues or improvements
 
+IMPORTANT: Your response must start with "FILE: <filename>" where <filename> is the name of the file being modified (e.g., "FILE: main.rs" or "FILE: lib.rs").
+
 Please provide a clear, concise suggestion for what should be changed."""
     
     def _create_prompt_suggestion_prompt(
@@ -421,10 +457,36 @@ Here is the current file content:
 3. How the changes should maintain compatibility with existing code
 4. Any imports or dependencies that might be needed
 
+IMPORTANT: Your response must start with "FILE: <filename>" where <filename> is the name of the file being modified (e.g., "FILE: main.rs" or "FILE: lib.rs").
+
 Provide a clear, step-by-step explanation of the changes needed."""
     
     def _create_final_diff_prompt(self, base_suggestion: str, original_content: str) -> str:
         """Create prompt for final diff generation"""
+        example = """--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,10 +1,15 @@
+-struct User {
++struct Amount {
+     id: i32,
+-    name: String,
++    amount: f64,
++    email: String,
+ }
+ 
+-impl User {
+-    fn new(id: i32, name: String) -> Self {
+-        Self { id, name }
++impl Amount {
++    fn new(id: i32, amount: f64, email: String) -> Self {
++        Self { id, amount, email }
+     }
++
++    fn get_amount(&self) -> f64 {
++        self.amount
++    }
+ }
+"""
         return f"""Based on this suggestion:
 
 {base_suggestion}
@@ -434,6 +496,18 @@ And this original file content:
 {original_content}
 ```
 
-Please generate a complete git diff that implements the suggested changes. The output should be in standard git diff format starting with --- and +++ lines, followed by hunks with @@ markers.
+Please generate a complete git diff that implements the suggested changes. 
 
-Only output the diff format, no explanations or additional text."""
+IMPORTANT: Extract the filename from the suggestion (it starts with "FILE: <filename>") and use that filename in your diff headers.
+
+
+Constraints:
+- Use the standard diff format starting with `--- a/...` and `+++ b/...`
+- Include hunk headers like `@@ -start,count +start,count @@`
+- Show added lines prefixed with `+`, removed lines prefixed with `-`, unchanged lines without prefix
+- Do not output explanations, comments, or any other text outside the diff
+
+Example request: "Rename struct User to Account and add a new field email: String"
+Expected output:
+{example}
+"""

@@ -76,7 +76,9 @@ fn main() {
  }"""
     },
     "prompt_make_point_3d": {
-        "base_suggestion": """To make the Point struct 3D, I need to:
+        "base_suggestion": """FILE: main.rs
+
+To make the Point struct 3D, I need to:
 
 1. Rename the struct to Point3D to reflect its nature
 2. Add a z coordinate field to represent the third dimension

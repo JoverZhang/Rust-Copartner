@@ -130,7 +130,8 @@ class RustCopartnerWorkflow:
             suggestion_result = await self.suggestion_generator.generate_suggestion(
                 diff_content=diff_content,
                 original_file_content=original_content,
-                project_context=project_context
+                project_context=project_context,
+                file_path=original_file_path
             )
             
             return WorkflowResult(
@@ -190,7 +191,8 @@ class RustCopartnerWorkflow:
             suggestion_result = await self.suggestion_generator.generate_prompt_suggestion(
                 prompt=prompt,
                 original_file_content=original_content,
-                project_context=project_context
+                project_context=project_context,
+                file_path=main_file_path
             )
             
             return WorkflowResult(

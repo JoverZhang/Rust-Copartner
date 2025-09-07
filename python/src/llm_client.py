@@ -15,7 +15,7 @@ class LLMConfig:
     api_key: str
     base_url: str = "https://openrouter.ai/api/v1"
     model: str = "deepseek/deepseek-r1:free"
-    timeout: int = 30
+    timeout: int = 300
     
     @classmethod
     def from_env(cls) -> 'LLMConfig':
@@ -28,7 +28,7 @@ class LLMConfig:
             api_key=api_key,
             base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
             model=os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-r1:free"),
-            timeout=int(os.getenv("OPENROUTER_TIMEOUT", "30"))
+            timeout=int(os.getenv("OPENROUTER_TIMEOUT", "90"))
         )
 
 
@@ -110,8 +110,9 @@ class LLMClient:
         max_tokens: Optional[int] = None
     ) -> LLMResponse:
         """Generate mock response for testing"""
-        # Simulate API delay
-        await asyncio.sleep(0.01)
+        # Simulate API delay (can be configured via environment variable)
+        delay = float(os.getenv("MOCK_LLM_DELAY", "0.01"))
+        await asyncio.sleep(delay)
         
         # Use mock response based on prompt content
         content = self._get_mock_response(prompt)
@@ -170,7 +171,9 @@ class LLMClient:
         # Analyze prompt to determine appropriate mock response
         if "point" in prompt_lower and "point3d" in prompt_lower:
             if "base suggestion" in prompt_lower or "suggest" in prompt_lower or "analyzing a code change" in prompt_lower:
-                return """Based on the diff showing a struct rename from Point to Point3D, I suggest adding a z coordinate to make it truly 3D:
+                return """FILE: main.rs
+
+Based on the diff showing a struct rename from Point to Point3D, I suggest adding a z coordinate to make it truly 3D:
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
