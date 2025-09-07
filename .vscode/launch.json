@@ -1,0 +1,34 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Rust Copartner Client",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/rust-copartner-client.py",
+            "console": "integratedTerminal",
+            "args": [
+                "e2e_tests/scene1/last_change.diff",
+                "--mock",
+                "--project-path",
+                "e2e_tests/scene1/original"
+            ],
+            "python": "${workspaceFolder}/python/.venv/bin/python",
+        },
+        {
+            "name": "Rust Copartner Daemon",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/rust-copartner-daemon.py",
+            "console": "integratedTerminal",
+            "args": [
+                "e2e_tests/scene1/original",
+                "--mock"
+            ],
+            "python": "${workspaceFolder}/python/.venv/bin/python",
+        }
+    ]
+}
