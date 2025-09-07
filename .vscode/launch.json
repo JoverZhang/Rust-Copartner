@@ -12,9 +12,6 @@
             "console": "integratedTerminal",
             "args": [
                 "e2e_tests/scene1/last_change.diff",
-                "--mock",
-                "--project-path",
-                "e2e_tests/scene1/original"
             ],
             "python": "${workspaceFolder}/python/.venv/bin/python",
         },

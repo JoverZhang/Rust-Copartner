@@ -14,15 +14,17 @@ from pydantic import BaseModel
 import uvicorn
 
 from .workflow import RustCopartnerWorkflow, WorkflowResult
+import uuid
+import subprocess
+import tempfile
+import shutil
+from pathlib import Path
 
 
 # Request/Response models
 class SuggestionRequest(BaseModel):
     """Request model for suggestion generation"""
-    diff_content: Optional[str] = None
-    diff_file_path: Optional[str] = None
-    project_path: str
-    use_mock: bool = False
+    diff_content: str
 
 
 class SuggestionResponse(BaseModel):
@@ -31,8 +33,25 @@ class SuggestionResponse(BaseModel):
     suggestion: Optional[str] = None
     final_diff: Optional[str] = None
     is_valid: Optional[bool] = None
+    requires_confirmation: Optional[bool] = None
+    suggestion_id: Optional[str] = None
     error_message: Optional[str] = None
     processing_time_ms: Optional[float] = None
+
+
+class ApplyRequest(BaseModel):
+    """Request model for applying suggestions"""
+    suggestion_id: str
+    accept: bool
+
+
+class ApplyResponse(BaseModel):
+    """Response model for applying suggestions"""
+    success: bool
+    message: Optional[str] = None
+    files_changed: Optional[list] = None
+    backup_files: Optional[list] = None
+    error: Optional[str] = None
 
 
 class HealthResponse(BaseModel):
@@ -49,14 +68,27 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Global workflow instance
+# Global state
 workflow: Optional[RustCopartnerWorkflow] = None
+project_path: Optional[Path] = None
+pending_suggestions: Dict[str, Dict[str, Any]] = {}
 
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize the workflow on startup"""
-    global workflow
+    global workflow, project_path
+    
+    # Get project path from environment variable set by main()
+    project_path_str = os.getenv("PROJECT_PATH")
+    if not project_path_str:
+        print("❌ PROJECT_PATH environment variable not set")
+        sys.exit(1)
+    
+    project_path = Path(project_path_str)
+    if not project_path.exists():
+        print(f"❌ Project directory not found: {project_path}")
+        sys.exit(1)
     
     # Check if we should use mock mode (for development/testing)
     use_mock = os.getenv("USE_MOCK_LLM", "false").lower() == "true"
@@ -97,66 +129,52 @@ async def health_check():
 @app.post("/suggest", response_model=SuggestionResponse)
 async def generate_suggestion(request: SuggestionRequest):
     """Generate code suggestion based on diff"""
-    if workflow is None:
+    global pending_suggestions
+    
+    if workflow is None or project_path is None:
         raise HTTPException(status_code=503, detail="Workflow not initialized")
     
-    # Validate request
-    if not request.diff_content and not request.diff_file_path:
-        raise HTTPException(
-            status_code=400, 
-            detail="Either diff_content or diff_file_path must be provided"
-        )
-    
-    if not request.project_path or not Path(request.project_path).exists():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Project path does not exist: {request.project_path}"
-        )
+    if not request.diff_content or not request.diff_content.strip():
+        raise HTTPException(status_code=400, detail="diff_content is required")
     
     try:
         import time
         start_time = time.time()
         
-        # Toggle mock mode if requested
-        original_mock_mode = workflow.llm_client.use_mock
-        if request.use_mock != original_mock_mode:
-            workflow.llm_client.set_mock_mode(request.use_mock)
+        # Process diff using the configured project path
+        result = await workflow.process_diff(
+            diff_content=request.diff_content,
+            project_path=str(project_path)
+        )
         
-        try:
-            # Process diff
-            if request.diff_content:
-                result = await workflow.process_diff(
-                    diff_content=request.diff_content,
-                    project_path=request.project_path
-                )
-            else:
-                result = await workflow.process_diff_file(
-                    diff_file_path=request.diff_file_path,
-                    project_path=request.project_path
-                )
-            
-            processing_time = (time.time() - start_time) * 1000  # Convert to ms
-            
-            # Prepare response
-            if result.success and result.suggestion_result:
-                return SuggestionResponse(
-                    success=True,
-                    suggestion=result.suggestion_result.base_suggestion,
-                    final_diff=result.suggestion_result.final_diff,
-                    is_valid=result.suggestion_result.is_valid,
-                    processing_time_ms=processing_time
-                )
-            else:
-                return SuggestionResponse(
-                    success=False,
-                    error_message=result.error_message,
-                    processing_time_ms=processing_time
-                )
+        processing_time = (time.time() - start_time) * 1000  # Convert to ms
         
-        finally:
-            # Restore original mock mode
-            if request.use_mock != original_mock_mode:
-                workflow.llm_client.set_mock_mode(original_mock_mode)
+        # Prepare response
+        if result.success and result.suggestion_result:
+            # Generate unique ID for this suggestion
+            suggestion_id = str(uuid.uuid4())
+            
+            # Store suggestion for later application
+            pending_suggestions[suggestion_id] = {
+                "final_diff": result.suggestion_result.final_diff,
+                "timestamp": time.time()
+            }
+            
+            return SuggestionResponse(
+                success=True,
+                suggestion=result.suggestion_result.base_suggestion,
+                final_diff=result.suggestion_result.final_diff,
+                is_valid=result.suggestion_result.is_valid,
+                requires_confirmation=result.suggestion_result.is_valid,
+                suggestion_id=suggestion_id if result.suggestion_result.is_valid else None,
+                processing_time_ms=processing_time
+            )
+        else:
+            return SuggestionResponse(
+                success=False,
+                error_message=result.error_message,
+                processing_time_ms=processing_time
+            )
     
     except Exception as e:
         processing_time = (time.time() - start_time) * 1000 if 'start_time' in locals() else 0
@@ -165,6 +183,138 @@ async def generate_suggestion(request: SuggestionRequest):
             error_message=f"Internal server error: {str(e)}",
             processing_time_ms=processing_time
         )
+
+
+@app.post("/apply", response_model=ApplyResponse)
+async def apply_suggestion(request: ApplyRequest):
+    """Apply or reject a suggestion"""
+    global pending_suggestions
+    
+    if not request.suggestion_id or request.suggestion_id not in pending_suggestions:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+    
+    suggestion_data = pending_suggestions[request.suggestion_id]
+    
+    try:
+        if not request.accept:
+            # User rejected the suggestion
+            del pending_suggestions[request.suggestion_id]
+            return ApplyResponse(
+                success=True,
+                message="Suggestion rejected by user"
+            )
+        
+        # User accepted - apply the diff
+        final_diff = suggestion_data["final_diff"]
+        
+        if not final_diff or not final_diff.strip():
+            del pending_suggestions[request.suggestion_id]
+            return ApplyResponse(
+                success=True,
+                message="No changes to apply (empty diff)",
+                files_changed=[]
+            )
+        
+        # Apply the diff using git apply
+        result = _apply_diff_to_project(final_diff, project_path)
+        
+        # Clean up the pending suggestion
+        del pending_suggestions[request.suggestion_id]
+        
+        return result
+        
+    except Exception as e:
+        return ApplyResponse(
+            success=False,
+            error=f"Failed to apply suggestion: {str(e)}"
+        )
+
+
+def _apply_diff_to_project(diff_content: str, proj_path: Path) -> ApplyResponse:
+    """Apply a diff to the project files"""
+    try:
+        # Extract list of files that will be modified
+        files_to_change = _extract_files_from_diff(diff_content)
+        
+        # Create backups
+        backup_files = []
+        backup_dir = proj_path / ".rust-copartner-backups"
+        backup_dir.mkdir(exist_ok=True)
+        
+        for file_path in files_to_change:
+            full_path = proj_path / file_path
+            if full_path.exists():
+                import time
+                timestamp = int(time.time())
+                backup_name = f"{file_path.replace('/', '_')}_{timestamp}.bak"
+                backup_path = backup_dir / backup_name
+                shutil.copy2(str(full_path), str(backup_path))
+                backup_files.append(str(backup_path))
+        
+        # Create temporary patch file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.patch', delete=False) as patch_file:
+            # Ensure diff ends with newline (required by git apply)
+            if not diff_content.endswith('\n'):
+                diff_content += '\n'
+            patch_file.write(diff_content)
+            patch_file.flush()
+            
+            try:
+                # First, validate the patch
+                result = subprocess.run([
+                    'git', 'apply', '--check', '--verbose', patch_file.name
+                ], capture_output=True, text=True, cwd=str(proj_path))
+                
+                if result.returncode != 0:
+                    return ApplyResponse(
+                        success=False,
+                        error="Diff validation failed",
+                        message=result.stderr
+                    )
+                
+                # Apply the patch
+                result = subprocess.run([
+                    'git', 'apply', patch_file.name
+                ], capture_output=True, text=True, cwd=str(proj_path))
+                
+                if result.returncode != 0:
+                    return ApplyResponse(
+                        success=False,
+                        error="Failed to apply diff",
+                        message=result.stderr
+                    )
+                
+                return ApplyResponse(
+                    success=True,
+                    message=f"Successfully applied diff to {len(files_to_change)} file(s)",
+                    files_changed=files_to_change,
+                    backup_files=backup_files
+                )
+            
+            finally:
+                # Clean up temporary patch file
+                try:
+                    os.unlink(patch_file.name)
+                except:
+                    pass
+    
+    except Exception as e:
+        return ApplyResponse(
+            success=False,
+            error=f"Unexpected error applying diff: {str(e)}"
+        )
+
+
+def _extract_files_from_diff(diff_content: str) -> list:
+    """Extract list of files being modified from diff content"""
+    files = []
+    for line in diff_content.split('\n'):
+        if line.startswith('--- a/'):
+            # Extract file path from git diff format
+            file_path = line[6:]  # Remove '--- a/' prefix
+            if file_path not in files:
+                files.append(file_path)
+    return files
 
 
 @app.get("/")
@@ -177,6 +327,7 @@ async def root():
         "endpoints": {
             "health": "/health",
             "suggest": "/suggest (POST)",
+            "apply": "/apply (POST)",
             "docs": "/docs"
         }
     }
