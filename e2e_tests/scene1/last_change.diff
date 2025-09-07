@@ -1,9 +1,0 @@
---- a/main.rs
-+++ b/main.rs
-@@ -1,5 +1,5 @@
- #[derive(Debug, Clone, Copy, PartialEq)]
--struct Point {
-+struct Point3D {
-     x: i32,
-     y: i32,
- }
