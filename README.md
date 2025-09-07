@@ -178,14 +178,14 @@ Suggested changes:
 Accept? (y/n): y
 ```
 
-## Architecture
+## Workflow (daemon)
 
-### Workflow
+### Common Setup
 
-0. Build/Update embedding index for the codebase to Qdrant.
+1. **Index Building**: Build/Update embedding index for the codebase to Qdrant.
     - (Next step) Uses Elasticsearch for BM25.
     - Qdrant Indexes:
-      - id: hash(repo_id, path, qual_symbol),
+      - id: hash(repo_id, path, qual_symbol)
       - vector:
         - signature: `struct`, `impl`, `fn`..., compacted string
         - identifiers: different identifiers in the code fragment, compacted string
@@ -199,19 +199,28 @@ Accept? (y/n): y
         - start_line: int
         - end_line: int
         - text: code fragment text
-1. Generate a diff file between the user change and the original file (`last_change.diff`).
-2. Generate a query embedding for the diff file.
-    - Take the identifiers directly in the changed lines.
-    - Embed the query by `fastembed` (low cost).
-3. Get top-K code fragments from indexes.
+2. **Embedding Query Generation**: Based on the `diff` or `prompt`
+    - More details in below section.
+3. **Context Retrieval**: Get top-K code fragments from indexes.
+    - `Score` = a*`Embedding'` + b*`BM25'` + c*`Heuristic'` (a, b, c are weights)
     - `Embedding` = Search for the top 30 code fragments from Qdrant.
     - `BM25` = (Next step) Search for the top 30 code fragments from Elasticsearch.
     - `Heuristic` = (Next step) Use some rules to affect the ranking.
-    - `Score` = a*`Embeddeing'` + b*`BM25'` + c*`Heuristic'` (a, b, c are weights)
-    - Sort the code fragments by `Score`.
-4. Send top-K code fragments + the original file to LLM to generate a "base suggestion diff".
-5. Send the "base suggestion diff" + the original file to LLM to generate a "suggestion.diff".
-6. Use `git apply --check` to check if the "suggestion.diff" is valid.
+4. **Suggestion Generation**: Send top-K code fragments + the original file to LLM to generate a `base suggestion diff`.
+5. **Output Processing**: Send the "base suggestion diff" + the original file to LLM to generate a `suggestion diff` what can be applied to the project.
+6. **Validation & Acceptance**: Use `git apply --check` to validate the diff.
     - (Next step) Check by `rustfmt` and `clippy` first.
-    - If invalid, skip the suggestion.
-    - If valid, ask the user if they want to accept the suggestion.
+    - If valid, ask the user if they want to accept all changes.
+
+### Query Embedding Generation
+
+- Interactive Mode
+  1. **Diff Generation**: Generate a diff file between the user change and the original file (`last_change.diff`).
+  2. **Query Embedding**: Generate a query embedding for the diff file.
+      - Take the identifiers directly in the changed lines.
+      - Embed the query by `fastembed` (low cost).
+- Prompt Mode
+  1. **Prompt Processing**: Parse the natural language prompt from the user.
+  2. **Intent Analysis**: Generate query embedding for the prompt description.
+      - Extract key identifiers and concepts from the prompt.
+      - Embed the prompt by `fastembed` (low cost).
