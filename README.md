@@ -44,9 +44,7 @@ Client options:
 - `--host`: Host of the daemon server (default: localhost)
 - `--json`: Output result in JSON format
 
-## Example
-
-### Interactive Mode - Scene 1
+## Example (Interactive Mode - Scene 1)
 
 > You can find an example in the `e2e_tests/interactive/scene1` directory.
 
@@ -56,9 +54,8 @@ We can use the `rust-copartner-daemon.py` to start a daemon server to watch this
 python rust-copartner-daemon.py e2e_tests/interactive/scene1/original
 ```
 
-Source code of `main.rs` before change:
-
 ```rust
+// e2e_tests/interactive/scene1/original/main.rs
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Point {
     x: i32,
@@ -132,30 +129,7 @@ Suggest change:
 Accept? (y/n): y
 ```
 
-When you accept the suggestion, the `main.rs` file will be updated to the following:
-
-```rust
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Point3D {
-    x: i32,
-    y: i32,
-    z: i32,
-}
-
-impl Point3D {
-    fn new(x: i32, y: i32, z: i32) -> Self {
-        Self { x, y, z }
-    }
-}
-
-fn main() {
-    let p = Point3D::new(1, 2, 3);
-    println!("p = {:?}", p);
-}
-
-```
-
-### Prompt Mode - Scene 1
+## Example (Prompt Mode - Scene 1)
 
 > You can find an example in the `e2e_tests/prompt/scene1` directory.
 
