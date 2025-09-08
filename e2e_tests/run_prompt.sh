@@ -52,7 +52,7 @@ for scene in prompt/*; do
   else
     echo "❌ FAILED: $scene - Results don't match expected"
     echo "Diff between actual and expected:"
-    diff -r actual expect || true
+    diff --exclude=".*" -r actual expect || true
     cd ../..
     exit 1
   fi
