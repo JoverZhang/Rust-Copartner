@@ -140,8 +140,11 @@ class LLMClient:
         """
         prompt_lower = prompt.lower()
         
-        # Check for final diff generation (should return diff format)
-        if "git diff" in prompt_lower and "only output the diff format" in prompt_lower:
+        # Check for final diff generation - key indicators
+        if ("please generate a complete git diff" in prompt_lower or 
+            "generate a complete git diff" in prompt_lower or
+            ("git diff" in prompt_lower and "diff format" in prompt_lower)):
+            # Return diff format for Point -> Point3D transformation
             return """--- a/main.rs
 +++ b/main.rs
 @@ -1,16 +1,17 @@
