@@ -207,7 +207,7 @@ Accept? (y/n): y
     - `BM25` = (Next step) Search for the top 30 code fragments from Elasticsearch.
     - `Heuristic` = (Next step) Use some rules to affect the ranking.
 4. **Suggestion Generation**: Send top-K code fragments + the original file to LLM to generate a `base suggestion diff`.
-5. **Output Processing**: Send the "base suggestion diff" + the original file to LLM to generate a `suggestion diff` what can be applied to the project.
+5. **Output Processing**: Send the "base suggestion diff" together with the original file to the LLM, and generate an **applicable suggestion diff**.
 6. **Validation & Acceptance**: Use `git apply --check` to validate the diff.
     - (Next step) Check by `rustfmt` and `clippy` first.
     - If valid, ask the user if they want to accept all changes.
@@ -224,3 +224,66 @@ Accept? (y/n): y
   2. **Intent Analysis**: Generate query embedding for the prompt description.
       - Extract key identifiers and concepts from the prompt.
       - Embed the prompt by `fastembed` (low cost).
+
+## Architecture (Draft)
+
+```mermaid
+graph TD
+    Client -->|diff / prompt| Daemon
+    Daemon -->|Watching| Project[Project directory]
+    Daemon -->|Indexing / Retrieval| Index[Indexer]
+    Daemon -->|Suggestion Generation| LLM
+```
+
+### Watch project changes (Daemon)
+
+```mermaid
+graph LR
+    Project[Project directory] -->|Watching changes| Daemon
+    Daemon -->|Upsert index| Indexer
+```
+
+### LangChain workflow (Daemon)
+
+```mermaid
+graph TD
+    Client -->|submit diff| InDiffP1[Extract identifiers]
+    Client -->|submit prompt| InPromptP1["Analyze intent (LLM)<br/>1.Reasoning the identifiers needed<br/>(might loop many times)"]
+
+    InPromptP1 --> InPromptP2[Extract identifiers]
+    InDiffP1 --> Ctx[Context Packaging<br/>1.Adjacent fragments <br/>2.Same module <br/>3.Same symbol aggregation]
+
+    subgraph Idxer[Indexer]
+        Indexer
+    end
+
+
+    Ctx -->|Retrieve if needed| Indexer
+    InPromptP2 --> Ctx
+
+    InPromptP1 -->|Retrieve if needed| Indexer
+
+    Ctx --> G1["Draft Diff Generator (LLM)<br/>Base Suggestion"]
+
+    G1 --> S1["Patch Normalizer (LLM)<br/>1.Normalize unified diff <br/>2.Path validation"]
+    subgraph Output Processor
+        S1 --> V[Validation: <br/> 1.git apply --check <br/> 2.rustfmt <br/> 3.clippy]
+        V -->|Fail| G2[LLM Self-healing Round<br/>Fix structure/line numbers/conflicts only]
+        G2 --> S1
+    end
+
+    V -->|Success| ASK[Ask: Accept?]
+    ASK -->|Yes| APPLY[Write changes to files]
+    ASK -->|No| STOP[Retain candidate]
+```
+
+### Indexer (Daemon)
+
+```mermaid
+graph TD
+    In[identifiers] --> Q1[Query Generation<br/>fastembed vector + keywords]
+    Q1 --> R1[Qdrant Retrieval TopN]
+    Q1 --> R2[Elasticsearch BM25 TopN]
+    R1 --> F[Result Fusion/Re-ranking<br/>Weighted: a\*Embed <br/>+ b\*BM25 <br/>+ c\*Heuristic]
+    R2 --> F
+```
