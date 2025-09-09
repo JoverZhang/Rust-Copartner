@@ -178,6 +178,10 @@ Suggested changes:
 Accept? (y/n): y
 ```
 
+## Demo (Mock mode)
+
+[![asciicast](https://asciinema.org/a/e3LX0yo8eM60qJ4WI54ypVjgr.svg)](https://asciinema.org/a/e3LX0yo8eM60qJ4WI54ypVjgr)
+
 ## Workflow (daemon)
 
 ### Common Setup
