@@ -277,7 +277,15 @@ graph TD
     ASK -->|No| STOP[Retain candidate]
 ```
 
-### Indexer (Daemon)
+## Indexer
+
+### Indexing (TODO)
+
+- Supports upsert index
+- Supports delete index
+- Extracts identifiers, code body, doc comment from the code fragment by `syn` or other parsers
+
+### Retrieval
 
 ```mermaid
 graph TD

@@ -1,0 +1,158 @@
+[
+  {
+    "name": "high_complexity",
+    "cyclomatic_complexity": 19,
+    "cognitive_complexity": 30,
+    "parameter_count": 1,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "function_call_chain": "new",
+    "rating": "High"
+  },
+  {
+    "name": "process_with_macros",
+    "cyclomatic_complexity": 6,
+    "cognitive_complexity": 11,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 1,
+    "function_call_chain": "Ok, Ok, default, Ok, Ok, default",
+    "macro_invocations": "vec, format",
+    "rating": "Medium"
+  },
+  {
+    "name": "validate_input",
+    "cyclomatic_complexity": 5,
+    "cognitive_complexity": 12,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "function_call_chain": "size_of, align_of, Err, Ok",
+    "rating": "Low"
+  },
+  {
+    "name": "complex_generic_function",
+    "cyclomatic_complexity": 5,
+    "cognitive_complexity": 12,
+    "parameter_count": 3,
+    "unsafe_blocks": 0,
+    "generic_parameters": 3,
+    "function_call_chain": "Ok, Err",
+    "macro_invocations": "format",
+    "rating": "Low"
+  },
+  {
+    "name": "medium_complexity",
+    "cyclomatic_complexity": 3,
+    "cognitive_complexity": 6,
+    "parameter_count": 1,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "rating": "Low"
+  },
+  {
+    "name": "direct_memory_access",
+    "cyclomatic_complexity": 2,
+    "cognitive_complexity": 6,
+    "parameter_count": 2,
+    "unsafe_blocks": 1,
+    "generic_parameters": 0,
+    "function_call_chain": "Some",
+    "rating": "Low"
+  },
+  {
+    "name": "new",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 0,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "function_call_chain": "new, new",
+    "rating": "Low"
+  },
+  {
+    "name": "transform_data",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "function_call_chain": "sleep, from_millis",
+    "rating": "Low"
+  },
+  {
+    "name": "deep_process",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "function_call_chain": "Ok",
+    "rating": "Low"
+  },
+  {
+    "name": "cache_result",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "function_call_chain": "Some",
+    "rating": "Low"
+  },
+  {
+    "name": "should_update",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "rating": "Low"
+  },
+  {
+    "name": "update_cache",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "rating": "Low"
+  },
+  {
+    "name": "finalize_result",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 1,
+    "function_call_chain": "default",
+    "rating": "Low"
+  },
+  {
+    "name": "get_backup_value",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 2,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "rating": "Low"
+  },
+  {
+    "name": "debug_info",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 0,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "rating": "Low"
+  },
+  {
+    "name": "simple_function",
+    "cyclomatic_complexity": 1,
+    "cognitive_complexity": 0,
+    "parameter_count": 1,
+    "unsafe_blocks": 0,
+    "generic_parameters": 0,
+    "rating": "Low"
+  }
+]

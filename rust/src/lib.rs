@@ -1,5 +1,6 @@
-pub mod parser;
 pub mod indexer;
+pub mod complexity_analyzer;
 
-pub use parser::*;
-pub use indexer::*;
+// Re-export main types and functions
+pub use indexer::{parser::*, CodeIndex, create_index};
+pub use complexity_analyzer::*;

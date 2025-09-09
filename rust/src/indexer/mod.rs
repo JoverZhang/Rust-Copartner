@@ -1,8 +1,10 @@
-// Placeholder for code indexing functionality
+// Indexer module - code indexing functionality
 // This will be implemented in future phases
 
-use crate::parser::CodeFragment;
+pub mod parser;
+
 use serde::{Deserialize, Serialize};
+pub use parser::CodeFragment;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CodeIndex {
