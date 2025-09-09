@@ -1,1 +1,1 @@
-Make Point struct 3D
+Change the struct Point to Point3D
