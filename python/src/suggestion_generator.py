@@ -42,6 +42,8 @@ class SuggestionGenerator:
         self.llm_client = llm_client
         self.max_context_tokens = max_context_tokens
         self.diff_parser = DiffParser()
+        self._prompts_dir = Path(__file__).parent.parent / "prompts"
+        self._load_prompts()
     
     async def generate_suggestion(
         self,
@@ -184,7 +186,7 @@ class SuggestionGenerator:
         # Generate base suggestion using LLM
         response = await self.llm_client.generate(
             llm_prompt,
-            system_message="You are a Rust code assistant that helps implement changes based on natural language descriptions.",
+            system_message=self._prompt_suggestion_system,
             temperature=0.3
         )
         
@@ -232,7 +234,7 @@ class SuggestionGenerator:
         start_time = time.time()
         response = await self.llm_client.generate(
             prompt,
-            system_message="You are a Rust code assistant that helps suggest improvements based on code changes.",
+            system_message=self._base_suggestion_system,
             temperature=0.3
         )
         print(f"📄 Base suggestion response {time.time() - start_time}ms:")
@@ -273,10 +275,7 @@ class SuggestionGenerator:
         start_time = time.time()
         response = await self.llm_client.generate(
             prompt,
-            system_message="""
-You are a Rust code refactoring assistant.  
-Your task: given my natural language request, output ONLY a unified diff patch.  
-""",
+            system_message=self._final_diff_system,
             temperature=0.1  # Lower temperature for more consistent diff format
         )
         print(f"📄 Final diff response {time.time() - start_time}ms:")
@@ -397,15 +396,35 @@ Your task: given my natural language request, output ONLY a unified diff patch.
         
         return formatted
     
-    def _create_base_suggestion_prompt(
-        self,
-        diff_content: str,
-        original_content: str,
-        diff_context: Dict[str, Any],
-        formatted_context: str
-    ) -> str:
-        """Create prompt for base suggestion generation"""
-        return f"""I need help analyzing a code change and suggesting improvements.
+    def _load_prompts(self):
+        """Load prompt templates from external files"""
+        try:
+            self._base_suggestion_template = self._load_prompt_file("base_suggestion.md")
+            self._prompt_suggestion_template = self._load_prompt_file("prompt_suggestion.md")
+            self._final_diff_template = self._load_prompt_file("final_diff.md")
+        except FileNotFoundError:
+            # Fallback to embedded templates if files don't exist (for tests)
+            self._base_suggestion_template = self._get_fallback_base_suggestion_template()
+            self._prompt_suggestion_template = self._get_fallback_prompt_suggestion_template()
+            self._final_diff_template = self._get_fallback_final_diff_template()
+        
+        # Load system messages
+        self._base_suggestion_system = "You are a Rust code assistant that helps suggest improvements based on code changes."
+        self._prompt_suggestion_system = "You are a Rust code assistant that helps implement changes based on natural language descriptions."
+        self._final_diff_system = """You are a Rust code refactoring assistant.  
+Your task: given my natural language request, output ONLY a unified diff patch."""
+    
+    def _load_prompt_file(self, filename: str) -> str:
+        """Load a prompt template from file"""
+        prompt_file = self._prompts_dir / filename
+        if prompt_file.exists():
+            return prompt_file.read_text(encoding="utf-8")
+        else:
+            raise FileNotFoundError(f"Prompt file not found: {prompt_file}")
+    
+    def _get_fallback_base_suggestion_template(self) -> str:
+        """Fallback template for base suggestions"""
+        return """I need help analyzing a code change and suggesting improvements.
 
 Here's the original file:
 ```rust
@@ -417,8 +436,8 @@ Here's the diff showing the change made:
 {diff_content}
 ```
 
-Change Summary: {diff_context.get('change_summary', 'code modifications')}
-Key identifiers involved: {', '.join(list(diff_context.get('identifiers', set()))[:10])}
+Change Summary: {change_summary}
+Key identifiers involved: {identifiers}
 
 {formatted_context}
 
@@ -432,16 +451,9 @@ IMPORTANT: Your response must start with "FILE: <filename>" where <filename> is 
 
 Please provide a clear, concise suggestion for what should be changed."""
     
-    def _create_prompt_suggestion_prompt(
-        self, 
-        prompt: str, 
-        original_content: str, 
-        formatted_context: str
-    ) -> str:
-        """Create prompt for generating suggestions from natural language prompts"""
-        context_section = f"Relevant project context:\n{formatted_context}\n\n" if formatted_context.strip() else ""
-        
-        return f"""You are tasked with implementing the following change request:
+    def _get_fallback_prompt_suggestion_template(self) -> str:
+        """Fallback template for prompt suggestions"""
+        return """You are tasked with implementing the following change request:
 
 "{prompt}"
 
@@ -460,6 +472,63 @@ Here is the current file content:
 IMPORTANT: Your response must start with "FILE: <filename>" where <filename> is the name of the file being modified (e.g., "FILE: main.rs" or "FILE: lib.rs").
 
 Provide a clear, step-by-step explanation of the changes needed."""
+    
+    def _get_fallback_final_diff_template(self) -> str:
+        """Fallback template for final diff generation"""
+        return """Based on this suggestion:
+
+{base_suggestion}
+
+And this original file content:
+```rust
+{original_content}
+```
+
+Please generate a complete git diff that implements the suggested changes. 
+
+IMPORTANT: Extract the filename from the suggestion (it starts with "FILE: <filename>") and use that filename in your diff headers.
+
+
+Constraints:
+- Use the standard diff format starting with `--- a/...` and `+++ b/...`
+- Include hunk headers like `@@ -start,count +start,count @@`
+- Show added lines prefixed with `+`, removed lines prefixed with `-`, unchanged lines without prefix
+- Do not output explanations, comments, or any other text outside the diff
+
+Example request: "Rename struct User to Account and add a new field email: String"
+Expected output:
+{example}"""
+    
+    def _create_base_suggestion_prompt(
+        self,
+        diff_content: str,
+        original_content: str,
+        diff_context: Dict[str, Any],
+        formatted_context: str
+    ) -> str:
+        """Create prompt for base suggestion generation"""
+        return self._base_suggestion_template.format(
+            original_content=original_content,
+            diff_content=diff_content,
+            change_summary=diff_context.get('change_summary', 'code modifications'),
+            identifiers=', '.join(list(diff_context.get('identifiers', set()))[:10]),
+            formatted_context=formatted_context
+        )
+    
+    def _create_prompt_suggestion_prompt(
+        self, 
+        prompt: str, 
+        original_content: str, 
+        formatted_context: str
+    ) -> str:
+        """Create prompt for generating suggestions from natural language prompts"""
+        context_section = f"Relevant project context:\n{formatted_context}\n\n" if formatted_context.strip() else ""
+        
+        return self._prompt_suggestion_template.format(
+            prompt=prompt,
+            original_content=original_content,
+            context_section=context_section
+        )
     
     def _create_final_diff_prompt(self, base_suggestion: str, original_content: str) -> str:
         """Create prompt for final diff generation"""
@@ -487,27 +556,8 @@ Provide a clear, step-by-step explanation of the changes needed."""
 +    }
  }
 """
-        return f"""Based on this suggestion:
-
-{base_suggestion}
-
-And this original file content:
-```rust
-{original_content}
-```
-
-Please generate a complete git diff that implements the suggested changes. 
-
-IMPORTANT: Extract the filename from the suggestion (it starts with "FILE: <filename>") and use that filename in your diff headers.
-
-
-Constraints:
-- Use the standard diff format starting with `--- a/...` and `+++ b/...`
-- Include hunk headers like `@@ -start,count +start,count @@`
-- Show added lines prefixed with `+`, removed lines prefixed with `-`, unchanged lines without prefix
-- Do not output explanations, comments, or any other text outside the diff
-
-Example request: "Rename struct User to Account and add a new field email: String"
-Expected output:
-{example}
-"""
+        return self._final_diff_template.format(
+            base_suggestion=base_suggestion,
+            original_content=original_content,
+            example=example
+        )
