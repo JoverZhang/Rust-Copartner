@@ -21,5 +21,11 @@ walkdir = "2.4"
 tokio = { version = "1.0", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
 dotenv = "0.15"
-proc-macro2 = "1.0"
+proc-macro2 = { version = "1.0", features = ["span-locations"] }
 chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+regex = "1.10"
+pathdiff = "0.2"
+
+[dev-dependencies]
+tempfile = "3.10"
