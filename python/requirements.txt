@@ -4,7 +4,12 @@ uvicorn>=0.24.0
 
 # LLM and AI
 langchain>=0.1.0
+langchain-community>=0.0.10
+fastembed>=0.2.0
 openai>=1.6.0
+
+# Vector database
+qdrant-client>=1.7.0
 
 # HTTP client
 httpx>=0.25.0
