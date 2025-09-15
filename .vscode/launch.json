@@ -26,6 +26,21 @@
                 // "--mock"
             ],
             "python": "${workspaceFolder}/python/.venv/bin/python",
+        },
+        {
+            "name": "LLDB: project_analyzer (minimal)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/project_analyzer",
+            "args": [
+                "--path",
+                "${workspaceFolder}/rust/tests/fixtures",
+                "--repo-id",
+                "abc"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "preLaunchTask": "build:project_analyzer"
         }
     ]
 }

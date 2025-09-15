@@ -3,8 +3,8 @@ use quote::ToTokens;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
-use syn::{Attribute, Ident, ItemFn, ItemImpl, ItemStruct};
 use syn::visit::Visit;
+use syn::{Attribute, Ident, ItemFn, ItemImpl, ItemStruct};
 
 pub fn sha256_id(repo_id: &str, rel_path: &str, qual_symbol: &str) -> String {
     let mut hasher = Sha256::new();
@@ -38,7 +38,9 @@ pub fn merge_doc_comments(attrs: &[Attribute]) -> String {
             let ts = attr.to_token_stream().to_string();
             let re = Regex::new("doc\\s*=\\s*\"([^\"]*)\"").unwrap();
             if let Some(c) = re.captures(&ts) {
-                if !out.is_empty() { out.push('\n'); }
+                if !out.is_empty() {
+                    out.push('\n');
+                }
                 out.push_str(c.get(1).unwrap().as_str());
             }
         }
@@ -153,7 +155,10 @@ pub fn span_start_end(span: Span) -> Option<((usize, usize), (usize, usize))> {
     let start = span.start();
     let end = span.end();
     if start.line > 0 && end.line > 0 {
-        Some(((start.line as usize, start.column as usize), (end.line as usize, end.column as usize)))
+        Some((
+            (start.line as usize, start.column as usize),
+            (end.line as usize, end.column as usize),
+        ))
     } else {
         None
     }

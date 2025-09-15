@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CodeFragment {
-    pub kind: String,           // "struct", "impl", "fn", etc.
-    pub qual_symbol: String,    // "crate::point::Point::new"
+    pub kind: String,        // "struct", "impl", "fn", etc.
+    pub qual_symbol: String, // "crate::point::Point::new"
     pub start_line: usize,
     pub end_line: usize,
     pub text: String,

@@ -12,7 +12,10 @@ fn emits_valid_ndjson_and_metadata() {
     let fixture = include_str!("fixtures/point.rs");
     fs::write(src_dir.join("point.rs"), fixture).unwrap();
 
-    let cfg = AnalyzeConfig { path: src_dir.clone(), repo_id: "test/repo".to_string() };
+    let cfg = AnalyzeConfig {
+        path: src_dir.clone(),
+        repo_id: "test/repo".to_string(),
+    };
     let records = analyze_project(&cfg).expect("analyze should succeed");
 
     assert!(!records.is_empty(), "should produce records");
@@ -24,7 +27,10 @@ fn emits_valid_ndjson_and_metadata() {
         let line = serde_json::to_string(rec).unwrap();
         let _v: Value = serde_json::from_str(&line).unwrap();
         assert!(hex64.is_match(&rec.id), "id must be 64-char hex");
-        assert!(!rec.vector_fields.signature.is_empty(), "signature non-empty");
+        assert!(
+            !rec.vector_fields.signature.is_empty(),
+            "signature non-empty"
+        );
         // Doc comments exist for items in fixture
         assert!(
             !rec.vector_fields.doc_comment.is_empty(),
@@ -37,4 +43,3 @@ fn emits_valid_ndjson_and_metadata() {
     assert!(kinds.contains("impl"));
     assert!(kinds.contains("fn"));
 }
-

@@ -4,9 +4,11 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::*;
-use rust_copartner::complexity_analyzer::{ComplexityAnalyzer, ComplexityRating, FunctionComplexity};
 use dotenv::dotenv;
 use reqwest::Client;
+use rust_copartner::complexity_analyzer::{
+    ComplexityAnalyzer, ComplexityRating, FunctionComplexity,
+};
 use serde::{Deserialize, Serialize};
 use std::{env, fs, path::PathBuf};
 
@@ -77,7 +79,10 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     println!("{}", "🤖 Simple AI Test Generator".bright_cyan().bold());
-    println!("Analyzing: {}", cli.file.display().to_string().bright_yellow());
+    println!(
+        "Analyzing: {}",
+        cli.file.display().to_string().bright_yellow()
+    );
     println!();
 
     // Check environment variables
@@ -85,8 +90,8 @@ async fn main() -> Result<()> {
         .context("OPENROUTER_API_KEY environment variable is required")?;
     let base_url = env::var("OPENROUTER_BASE_URL")
         .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
-    let model = env::var("OPENROUTER_MODEL")
-        .unwrap_or_else(|_| "deepseek/deepseek-r1:free".to_string());
+    let model =
+        env::var("OPENROUTER_MODEL").unwrap_or_else(|_| "deepseek/deepseek-r1:free".to_string());
 
     if cli.verbose {
         println!("🔧 Configuration:");
@@ -99,8 +104,8 @@ async fn main() -> Result<()> {
     let source_code = fs::read_to_string(&cli.file)
         .with_context(|| format!("Failed to read file: {}", cli.file.display()))?;
 
-    let functions = ComplexityAnalyzer::analyze_file(&source_code)
-        .context("Failed to analyze source code")?;
+    let functions =
+        ComplexityAnalyzer::analyze_file(&source_code).context("Failed to analyze source code")?;
 
     // Filter functions that need AI-generated tests
     let target_functions: Vec<_> = functions
@@ -182,7 +187,7 @@ async fn main() -> Result<()> {
             "🎉".bright_green(),
             cli.output.display().to_string().bright_cyan()
         );
-        
+
         let total_tests: usize = all_tests.iter().map(|t| t.test_count).sum();
         println!(
             "📊 Summary: {} test functions generated for {} source functions",
@@ -207,16 +212,16 @@ fn print_function_summary(func: &FunctionComplexity) {
         complexity_color,
         func.name.bright_white(),
         func.cyclomatic_complexity.to_string().bright_cyan(),
-        func.parameter_count * 5  // Estimate line count
+        func.parameter_count * 5 // Estimate line count
     );
 }
 
 fn show_generation_plan(functions: &[&FunctionComplexity]) {
     println!("\n📋 Test Generation Plan:");
-    
+
     let estimated_cost = functions.len() as f64 * 0.003; // About $0.003 per function
     println!("💰 Estimated cost: ${:.4}", estimated_cost);
-    
+
     println!("\n📝 Test types to generate:");
     println!("   • Basic functionality tests");
     println!("   • Edge case tests");
@@ -293,7 +298,10 @@ Return only the Rust test code with #[test] functions."#,
         .post(&format!("{}/chat/completions", base_url))
         .header("Authorization", &format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
-        .header("HTTP-Referer", "https://github.com/corust-ai/interview-prep")
+        .header(
+            "HTTP-Referer",
+            "https://github.com/corust-ai/interview-prep",
+        )
         .header("X-Title", "Rust AI Test Generator")
         .json(&request)
         .send()
@@ -303,7 +311,11 @@ Return only the Rust test code with #[test] functions."#,
     if !response.status().is_success() {
         let status = response.status();
         let text = response.text().await.unwrap_or_default();
-        return Err(anyhow::anyhow!("API request failed with status {}: {}", status, text));
+        return Err(anyhow::anyhow!(
+            "API request failed with status {}: {}",
+            status,
+            text
+        ));
     }
 
     let api_response: OpenRouterResponse = response
@@ -330,33 +342,33 @@ Return only the Rust test code with #[test] functions."#,
 
 fn extract_function_code(source_code: &str, func: &FunctionComplexity) -> Result<String> {
     let lines: Vec<&str> = source_code.lines().collect();
-    
+
     // Find function definition
     for (i, line) in lines.iter().enumerate() {
-        if line.contains(&format!("fn {}", func.name)) 
+        if line.contains(&format!("fn {}", func.name))
             || line.contains(&format!("pub fn {}", func.name))
-            || line.contains(&format!("async fn {}", func.name)) {
-            
+            || line.contains(&format!("async fn {}", func.name))
+        {
             // Extract from function start to matching brace end
             let mut brace_count = 0;
             let mut function_lines = Vec::new();
             let mut in_function = false;
-            
+
             for line in &lines[i..] {
                 function_lines.push(*line);
-                
+
                 for ch in line.chars() {
                     match ch {
                         '{' => {
                             brace_count += 1;
                             in_function = true;
-                        },
+                        }
                         '}' => {
                             brace_count -= 1;
                             if in_function && brace_count == 0 {
                                 return Ok(function_lines.join("\n"));
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -364,8 +376,11 @@ fn extract_function_code(source_code: &str, func: &FunctionComplexity) -> Result
             break;
         }
     }
-    
-    Err(anyhow::anyhow!("Could not extract function code for {}", func.name))
+
+    Err(anyhow::anyhow!(
+        "Could not extract function code for {}",
+        func.name
+    ))
 }
 
 async fn save_generated_tests(
@@ -380,7 +395,7 @@ async fn save_generated_tests(
     }
 
     let mut full_content = String::new();
-    
+
     // File header
     full_content.push_str(&format!(
         r#"//! AI-Generated Unit Tests
@@ -405,11 +420,11 @@ use super::*;
             test_suite.function_name,
             test_suite.test_count
         ));
-        
+
         // Clean and format test code
         let cleaned_code = clean_generated_code(&test_suite.test_code);
         full_content.push_str(&cleaned_code);
-        
+
         if index < test_suites.len() - 1 {
             full_content.push_str("\n\n");
         }
@@ -428,7 +443,7 @@ fn clean_generated_code(code: &str) -> String {
         .replace("```", "")
         .trim()
         .to_string();
-    
+
     // Ensure code ends with newline
     if !cleaned.ends_with('\n') {
         format!("{}\n", cleaned)

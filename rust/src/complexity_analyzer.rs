@@ -30,9 +30,9 @@ pub struct ComplexityDetails {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplexityRating {
-    Low,    // 1-5
-    Medium, // 6-10
-    High,   // 11-20
+    Low,      // 1-5
+    Medium,   // 6-10
+    High,     // 11-20
     VeryHigh, // 21+
 }
 
@@ -51,22 +51,21 @@ pub struct ComplexityAnalyzer;
 
 impl ComplexityAnalyzer {
     pub fn analyze_file(content: &str) -> Result<Vec<FunctionComplexity>> {
-        let syntax = syn::parse_file(content)
-            .context("Failed to parse Rust file")?;
-        
+        let syntax = syn::parse_file(content).context("Failed to parse Rust file")?;
+
         let mut analyzer = FunctionVisitor::default();
         analyzer.visit_file(&syntax);
-        
+
         Ok(analyzer.functions)
     }
-    
+
     pub fn analyze_function(func: &ItemFn) -> FunctionComplexity {
         let mut visitor = ComplexityVisitor::default();
         visitor.visit_item_fn(func);
-        
+
         let cyclomatic = visitor.calculate_cyclomatic_complexity();
         let cognitive = visitor.calculate_cognitive_complexity();
-        
+
         FunctionComplexity {
             name: func.sig.ident.to_string(),
             cyclomatic_complexity: cyclomatic,
@@ -88,11 +87,11 @@ impl<'ast> Visit<'ast> for FunctionVisitor {
     fn visit_item_fn(&mut self, func: &'ast ItemFn) {
         let complexity = ComplexityAnalyzer::analyze_function(func);
         self.functions.push(complexity);
-        
+
         // Continue visiting nested functions
         syn::visit::visit_item_fn(self, func);
     }
-    
+
     fn visit_impl_item_fn(&mut self, func: &'ast ImplItemFn) {
         // Handle methods in impl blocks
         let item_fn = ItemFn {
@@ -103,7 +102,7 @@ impl<'ast> Visit<'ast> for FunctionVisitor {
         };
         let complexity = ComplexityAnalyzer::analyze_function(&item_fn);
         self.functions.push(complexity);
-        
+
         syn::visit::visit_impl_item_fn(self, func);
     }
 }
@@ -119,11 +118,9 @@ impl ComplexityVisitor {
     fn calculate_cyclomatic_complexity(&self) -> usize {
         // McCabe cyclomatic complexity = edges - nodes + 2
         // Simplified calculation: 1 + number of decision points
-        1 + self.details.if_statements 
-          + self.details.match_arms 
-          + self.details.loops
+        1 + self.details.if_statements + self.details.match_arms + self.details.loops
     }
-    
+
     fn calculate_cognitive_complexity(&self) -> usize {
         // Cognitive complexity considers nesting depth and unsafe blocks
         let base = self.details.if_statements + self.details.loops + self.details.match_arms;
@@ -131,18 +128,18 @@ impl ComplexityVisitor {
         let unsafe_penalty = self.details.unsafe_blocks * 3; // unsafe blocks increase cognitive burden
         base + nesting_penalty + unsafe_penalty
     }
-    
+
     fn enter_nesting(&mut self) {
         self.nesting_depth += 1;
         if self.nesting_depth > self.details.max_nesting_depth {
             self.details.max_nesting_depth = self.nesting_depth;
         }
     }
-    
+
     fn exit_nesting(&mut self) {
         self.nesting_depth = self.nesting_depth.saturating_sub(1);
     }
-    
+
     fn collect_use_path(&mut self, tree: &UseTree, path_parts: &mut Vec<String>) {
         match tree {
             UseTree::Path(use_path) => {
@@ -172,7 +169,7 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
         syn::visit::visit_expr_if(self, expr);
         self.exit_nesting();
     }
-    
+
     fn visit_expr_match(&mut self, expr: &'ast ExprMatch) {
         // Each match expression counts as a decision point, each arm adds complexity
         self.details.match_arms += expr.arms.len();
@@ -180,31 +177,31 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
         syn::visit::visit_expr_match(self, expr);
         self.exit_nesting();
     }
-    
+
     fn visit_expr_while(&mut self, expr: &'ast ExprWhile) {
         self.details.loops += 1;
         self.enter_nesting();
         syn::visit::visit_expr_while(self, expr);
         self.exit_nesting();
     }
-    
+
     fn visit_expr_for_loop(&mut self, expr: &'ast ExprForLoop) {
         self.details.loops += 1;
         self.enter_nesting();
         syn::visit::visit_expr_for_loop(self, expr);
         self.exit_nesting();
     }
-    
+
     fn visit_expr_loop(&mut self, expr: &'ast ExprLoop) {
         self.details.loops += 1;
         self.enter_nesting();
         syn::visit::visit_expr_loop(self, expr);
         self.exit_nesting();
     }
-    
+
     fn visit_expr_call(&mut self, expr: &'ast ExprCall) {
         self.details.function_calls += 1;
-        
+
         // Extract function call names
         if let Expr::Path(path_expr) = &*expr.func {
             if let Some(segment) = path_expr.path.segments.last() {
@@ -212,29 +209,32 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
                 self.details.function_call_chain.push(func_name);
             }
         }
-        
+
         syn::visit::visit_expr_call(self, expr);
     }
-    
+
     fn visit_expr_macro(&mut self, expr: &'ast ExprMacro) {
         // Record macro invocations
-        let macro_name = expr.mac.path.segments
+        let macro_name = expr
+            .mac
+            .path
+            .segments
             .iter()
             .map(|s| s.ident.to_string())
             .collect::<Vec<_>>()
             .join("::");
         self.details.macro_invocations.push(macro_name);
-        
+
         syn::visit::visit_expr_macro(self, expr);
     }
-    
+
     fn visit_expr_unsafe(&mut self, expr: &'ast ExprUnsafe) {
         self.details.unsafe_blocks += 1;
         self.enter_nesting();
         syn::visit::visit_expr_unsafe(self, expr);
         self.exit_nesting();
     }
-    
+
     fn visit_use_tree(&mut self, use_tree: &'ast UseTree) {
         // Collect module dependencies
         match use_tree {
@@ -243,7 +243,9 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
                 self.collect_use_path(&use_path.tree, &mut path_parts);
             }
             UseTree::Name(use_name) => {
-                self.details.module_dependencies.push(use_name.ident.to_string());
+                self.details
+                    .module_dependencies
+                    .push(use_name.ident.to_string());
             }
             UseTree::Group(use_group) => {
                 for item in &use_group.items {
@@ -252,16 +254,16 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
             }
             _ => {}
         }
-        
+
         syn::visit::visit_use_tree(self, use_tree);
     }
-    
+
     fn visit_item_fn(&mut self, func: &'ast ItemFn) {
         self.details.nested_functions += 1;
-        
+
         // Analyze generic parameters
         self.details.generic_parameters += func.sig.generics.params.len();
-        
+
         syn::visit::visit_item_fn(self, func);
     }
 }
@@ -279,9 +281,9 @@ impl std::fmt::Display for ComplexityRating {
 
 impl std::fmt::Display for FunctionComplexity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, 
+        write!(f,
             "Function: {}\n  Cyclomatic Complexity: {}\n  Cognitive Complexity: {}\n  Lines: {}\n  Parameters: {}\n  Rating: {}",
-            self.name, 
+            self.name,
             self.cyclomatic_complexity,
             self.cognitive_complexity,
             self.line_count,

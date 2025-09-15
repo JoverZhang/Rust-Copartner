@@ -9,3 +9,6 @@ run-e2e-tests: run-e2e-tests-interactive run-e2e-tests-prompt
 generate-complexity-report:
 	mkdir -p rust/tests/reports
 	cargo run --bin complexity_cli -- dir --path rust/tests/samples --export rust/tests/reports/complexity_report.json
+
+run-rust-project-analyzer-test:
+	cargo run --bin project_analyzer -- path rust/tests/samples --repo_id test/repo --out rust/tests/reports/project_analyzer_test.json

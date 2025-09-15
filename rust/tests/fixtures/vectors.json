@@ -1,0 +1,92 @@
+[
+  {
+    "id": "ddca6d834408af8019969269189edb7f119e5ff58047090bac5eb48f28230daa",
+    "vector_fields": {
+      "signature": "# [doc = \" A 2D point\"] pub struct Point { # [doc = \" x coordinate\"] pub x : i32 , # [doc = \" y coordinate\"] pub y : i32 , }",
+      "identifiers": "doc Point x i32 y",
+      "code_body": "struct Point { pub x: i32, pub y: i32, }",
+      "doc_comment": " A 2D point"
+    },
+    "payload": {
+      "repo_id": "abc",
+      "path": "point.rs",
+      "kind": "struct",
+      "qual_symbol": "crate::point::Point",
+      "start_line": 4,
+      "end_line": 9,
+      "text": "struct Point {\n    /// x coordinate\n    pub x: i32,\n    /// y coordinate\n    pub y: i32,\n}"
+    }
+  },
+  {
+    "id": "ddca6d834408af8019969269189edb7f119e5ff58047090bac5eb48f28230daa",
+    "vector_fields": {
+      "signature": "impl Point",
+      "identifiers": "doc Point new x i32 y Self sum self",
+      "code_body": "impl Point { pub fn new(x: i32, y: i32) -> Self { Self { x, y } } pub fn sum(&self) -> i32 { self.x + self.y } }",
+      "doc_comment": " Operations on `Point`"
+    },
+    "payload": {
+      "repo_id": "abc",
+      "path": "point.rs",
+      "kind": "impl",
+      "qual_symbol": "crate::point::Point",
+      "start_line": 11,
+      "end_line": 22,
+      "text": "impl Point {\n    /// Create a new Point\n    pub fn new(x: i32, y: i32) -> Self {\n        Self { x, y }\n    }\n\n    /// Sum coordinates\n    pub fn sum(&self) -> i32 {\n        self.x + self.y\n    }\n}"
+    }
+  },
+  {
+    "id": "0f63f4de191c15bd9527d827909a18e74a9ecfef274d24efffeaeb1a525db05a",
+    "vector_fields": {
+      "signature": "fn new (x : i32 , y : i32) -> Self",
+      "identifiers": "doc new x i32 y Self",
+      "code_body": "{ Self { x , y } }",
+      "doc_comment": " Create a new Point"
+    },
+    "payload": {
+      "repo_id": "abc",
+      "path": "point.rs",
+      "kind": "fn",
+      "qual_symbol": "crate::point::Point::new",
+      "start_line": 13,
+      "end_line": 16,
+      "text": "# [doc = \" Create a new Point\"] pub fn new (x : i32 , y : i32) -> Self { Self { x , y } }"
+    }
+  },
+  {
+    "id": "23dfbdaffaed4317d507afc46a6b02e3c6ecd5108a31985d4e4390902535e4ed",
+    "vector_fields": {
+      "signature": "fn sum (& self) -> i32",
+      "identifiers": "doc sum Self i32 self x y",
+      "code_body": "{ self . x + self . y }",
+      "doc_comment": " Sum coordinates"
+    },
+    "payload": {
+      "repo_id": "abc",
+      "path": "point.rs",
+      "kind": "fn",
+      "qual_symbol": "crate::point::Point::sum",
+      "start_line": 18,
+      "end_line": 21,
+      "text": "# [doc = \" Sum coordinates\"] pub fn sum (& self) -> i32 { self . x + self . y }"
+    }
+  },
+  {
+    "id": "6aed1f487f23217d5193013d6d1a021ea3a8dc3839dcd01bffb003a3526209cb",
+    "vector_fields": {
+      "signature": "fn origin () -> Point",
+      "identifiers": "doc origin Point x y",
+      "code_body": "{ Point { x : 0 , y : 0 } }",
+      "doc_comment": " Free function example"
+    },
+    "payload": {
+      "repo_id": "abc",
+      "path": "point.rs",
+      "kind": "fn",
+      "qual_symbol": "crate::point::origin",
+      "start_line": 24,
+      "end_line": 27,
+      "text": "# [doc = \" Free function example\"] pub fn origin () -> Point { Point { x : 0 , y : 0 } }"
+    }
+  }
+]

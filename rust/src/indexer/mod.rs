@@ -3,8 +3,8 @@
 
 pub mod parser;
 
-use serde::{Deserialize, Serialize};
 pub use parser::CodeFragment;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CodeIndex {
@@ -13,7 +13,5 @@ pub struct CodeIndex {
 
 pub fn create_index(_project_path: &str) -> Result<CodeIndex, Box<dyn std::error::Error>> {
     // TODO: Implement actual indexing logic
-    Ok(CodeIndex {
-        fragments: vec![],
-    })
+    Ok(CodeIndex { fragments: vec![] })
 }

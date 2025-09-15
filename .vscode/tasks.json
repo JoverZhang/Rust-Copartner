@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build:project_analyzer",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["build", "-p", "rust-copartner", "--bin", "project_analyzer"],
+      "problemMatcher": []
+    }
+  ]
+}

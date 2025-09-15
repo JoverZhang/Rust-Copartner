@@ -5,8 +5,8 @@ use quote::ToTokens;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 use syn::spanned::Spanned;
+use walkdir::WalkDir;
 
 #[derive(Clone, Debug)]
 pub struct AnalyzeConfig {
@@ -16,7 +16,7 @@ pub struct AnalyzeConfig {
 
 fn is_excluded(p: &Path) -> bool {
     let s = p.to_string_lossy();
-    s.contains("/target/") || s.contains("/tests/fixtures/") || s.ends_with(".generated.rs")
+    s.contains("/target/") || s.ends_with(".generated.rs")
 }
 
 pub fn analyze_project(cfg: &AnalyzeConfig) -> Result<Vec<OutputRecord>> {
@@ -40,10 +40,10 @@ pub fn analyze_project(cfg: &AnalyzeConfig) -> Result<Vec<OutputRecord>> {
 }
 
 fn process_file(root: &Path, file: &Path, repo_id: &str) -> Result<Vec<OutputRecord>> {
-    let content = fs::read_to_string(file)
-        .with_context(|| format!("Failed to read {}", file.display()))?;
-    let parsed: syn::File = syn::parse_file(&content)
-        .with_context(|| format!("Failed to parse {}", file.display()))?;
+    let content =
+        fs::read_to_string(file).with_context(|| format!("Failed to read {}", file.display()))?;
+    let parsed: syn::File =
+        syn::parse_file(&content).with_context(|| format!("Failed to parse {}", file.display()))?;
     let module_path = rel_module_path(root, file);
     let rel_path = pathdiff::diff_paths(file, root)
         .unwrap_or_else(|| file.to_path_buf())
@@ -63,7 +63,12 @@ fn process_file(root: &Path, file: &Path, repo_id: &str) -> Result<Vec<OutputRec
                 let id = sha256_id(repo_id, &rel_path, &qual);
                 records.push(OutputRecord {
                     id,
-                    vector_fields: VectorFields { signature, identifiers, code_body, doc_comment: doc },
+                    vector_fields: VectorFields {
+                        signature,
+                        identifiers,
+                        code_body,
+                        doc_comment: doc,
+                    },
                     payload: OutputPayload {
                         repo_id: repo_id.to_string(),
                         path: rel_path.clone(),
@@ -90,7 +95,12 @@ fn process_file(root: &Path, file: &Path, repo_id: &str) -> Result<Vec<OutputRec
                 let end_line = im.span().end().line as usize;
                 records.push(OutputRecord {
                     id,
-                    vector_fields: VectorFields { signature, identifiers, code_body, doc_comment: doc },
+                    vector_fields: VectorFields {
+                        signature,
+                        identifiers,
+                        code_body,
+                        doc_comment: doc,
+                    },
                     payload: OutputPayload {
                         repo_id: repo_id.to_string(),
                         path: rel_path.clone(),
@@ -112,7 +122,9 @@ fn process_file(root: &Path, file: &Path, repo_id: &str) -> Result<Vec<OutputRec
                         let doc = merge_doc_comments(&m.attrs);
                         let text = m.to_token_stream().to_string();
                         let code_body = if let Some(block) = &m.block.stmts.first() {
-                            compact_whitespace(&strip_comments(&m.block.to_token_stream().to_string()))
+                            compact_whitespace(&strip_comments(
+                                &m.block.to_token_stream().to_string(),
+                            ))
                         } else {
                             String::new()
                         };
@@ -121,7 +133,12 @@ fn process_file(root: &Path, file: &Path, repo_id: &str) -> Result<Vec<OutputRec
                         let end_line = m.span().end().line as usize;
                         records.push(OutputRecord {
                             id,
-                            vector_fields: VectorFields { signature, identifiers, code_body, doc_comment: doc },
+                            vector_fields: VectorFields {
+                                signature,
+                                identifiers,
+                                code_body,
+                                doc_comment: doc,
+                            },
                             payload: OutputPayload {
                                 repo_id: repo_id.to_string(),
                                 path: rel_path.clone(),
@@ -149,7 +166,12 @@ fn process_file(root: &Path, file: &Path, repo_id: &str) -> Result<Vec<OutputRec
                 let end_line = f.span().end().line as usize;
                 records.push(OutputRecord {
                     id,
-                    vector_fields: VectorFields { signature, identifiers, code_body, doc_comment: doc },
+                    vector_fields: VectorFields {
+                        signature,
+                        identifiers,
+                        code_body,
+                        doc_comment: doc,
+                    },
                     payload: OutputPayload {
                         repo_id: repo_id.to_string(),
                         path: rel_path.clone(),

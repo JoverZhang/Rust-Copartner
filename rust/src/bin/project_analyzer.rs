@@ -6,7 +6,11 @@ use std::io::{self, BufWriter};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
-#[command(name = "project_analyzer", version, about = "Scan Rust sources and emit NDJSON metadata")] 
+#[command(
+    name = "project_analyzer",
+    version,
+    about = "Scan Rust sources and emit NDJSON metadata"
+)]
 struct Cli {
     /// Root directory of Rust sources
     #[arg(long, value_name = "dir")]
@@ -23,12 +27,16 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let cfg = AnalyzeConfig { path: cli.path.clone(), repo_id: cli.repo_id.clone() };
+    let cfg = AnalyzeConfig {
+        path: cli.path.clone(),
+        repo_id: cli.repo_id.clone(),
+    };
     let records = analyze_project(&cfg)?;
 
     match cli.out {
         Some(p) => {
-            let f = File::create(&p).with_context(|| format!("Failed to create {}", p.display()))?;
+            let f =
+                File::create(&p).with_context(|| format!("Failed to create {}", p.display()))?;
             write_ndjson(&records, &mut BufWriter::new(f))?;
         }
         None => {
