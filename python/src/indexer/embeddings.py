@@ -34,7 +34,7 @@ class FastEmbedProvider:
     def __init__(self, model_name: str):
         from langchain_community.embeddings import FastEmbedEmbeddings  # deferred import
 
-        self._embed = FastEmbedEmbeddings(model_name=model_name)
+        self._embed = FastEmbedEmbeddings(model_name=model_name, cache_dir='/tmp/fastembed')
         self._dim: int | None = None
 
     def dimension(self) -> int:

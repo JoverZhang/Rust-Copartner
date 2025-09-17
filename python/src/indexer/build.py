@@ -126,22 +126,29 @@ def build_index(
 
     # Split into upsert batches
     for batch_indices in _batched(list(range(len(valid_records))), cfg.batch_size):
+        from qdrant_client.models import PointStruct
         points = []
         for i in batch_indices:
             rec = valid_records[i]
-            point = {
-                "id": rec.id,
-                "vectors": {
+            # Use hash of ID to create a valid unsigned integer for Qdrant
+            import hashlib
+            if isinstance(rec.id, str):
+                point_id = int(hashlib.md5(rec.id.encode()).hexdigest()[:8], 16)
+            else:
+                point_id = rec.id
+            point = PointStruct(
+                id=point_id,
+                vector={
                     "signature": sig_vecs[i],
                     "identifiers": idf_vecs[i],
                     "code_body": body_vecs[i],
                     "doc_comment": doc_vecs[i],
                 },
-                "payload": {
+                payload={
                     "vector_fields": rec.vector_fields.model_dump(),
                     "meta": rec.payload.model_dump(),
                 },
-            }
+            )
             points.append(point)
 
         if not cfg.dry_run and client is not None:
@@ -156,7 +163,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--input", required=True, help="Input file or directory")
     parser.add_argument("--strict", action="store_true", help="Fail fast on invalid lines")
     parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="Skip Qdrant operations, use mock embeddings")
+    parser.add_argument("--qdrant-url", help="Qdrant server URL (default: http://localhost:6333)")
+    parser.add_argument("--collection", help="Qdrant collection name (default: code_items)")
     args = parser.parse_args(argv)
 
     input_path = Path(args.input)
@@ -164,18 +173,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     batch_size = int(args.batch_size)
     dry_run = bool(args.dry_run)
 
-    # Env config
-    collection = os.getenv("QDRANT_COLLECTION", "code_items")
-    url = os.getenv("QDRANT_URL", "http://localhost:6333")
+    # Env config with CLI overrides
+    collection = args.collection or os.getenv("QDRANT_COLLECTION", "code_items")
+    url = args.qdrant_url or os.getenv("QDRANT_URL", "http://localhost:6333")
     api_key = os.getenv("QDRANT_API_KEY")
     model_name = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
     embed_batch = int(os.getenv("EMBED_BATCH", "128"))
 
     # Use mock embeddings in dry-run mode to avoid model downloads
-    if dry_run:
-        embeddings = MockEmbedProvider()
-    else:
-        embeddings = FastEmbedProvider(model_name)
+    # if dry_run:
+    embeddings = MockEmbedProvider()
+    # else:
+        # embeddings = FastEmbedProvider(model_name)
 
     client = None
     if not dry_run:
@@ -184,7 +193,19 @@ def main(argv: Optional[list[str]] = None) -> int:
         except Exception as e:
             print(f"qdrant-client not available: {e}", file=sys.stderr)
             return 2
-        client = QdrantClient(url=url, api_key=api_key)  # type: ignore
+
+        try:
+            print(f"Connecting to Qdrant at {url}...", file=sys.stderr)
+            client = QdrantClient(url=url, prefer_grpc=False, timeout=5, check_compatibility=False)
+            # Test connection
+            print(f"Testing connection...", file=sys.stderr)
+            client.get_collections()
+            print(f"Successfully connected to Qdrant", file=sys.stderr)
+        except Exception as e:
+            print(f"Failed to connect to Qdrant server at {url}: {e}", file=sys.stderr)
+            print("Make sure Qdrant server is running and accessible", file=sys.stderr)
+            print("Or use --dry-run to test without a real server", file=sys.stderr)
+            return 2
 
     cfg = BuildConfig(
         input_path=input_path,
@@ -195,6 +216,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         embed_batch=embed_batch,
     )
 
+    print(client)
     try:
         build_index(cfg, embeddings, client)
     except Exception as e:
