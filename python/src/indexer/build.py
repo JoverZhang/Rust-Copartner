@@ -181,10 +181,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     embed_batch = int(os.getenv("EMBED_BATCH", "128"))
 
     # Use mock embeddings in dry-run mode to avoid model downloads
-    # if dry_run:
-    embeddings = MockEmbedProvider()
-    # else:
-        # embeddings = FastEmbedProvider(model_name)
+    if dry_run:
+        embeddings = MockEmbedProvider()
+    else:
+        embeddings = FastEmbedProvider(model_name)
 
     client = None
     if not dry_run:
