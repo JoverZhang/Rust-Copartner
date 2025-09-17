@@ -35,7 +35,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["python/src"]
 
 [tool.black]
 line-length = 88
@@ -43,10 +43,10 @@ target-version = ['py39']
 
 [tool.isort]
 profile = "black"
-src_paths = ["src", "tests"]
+src_paths = ["python/src", "python/tests"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["python/tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
