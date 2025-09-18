@@ -1,6 +1,6 @@
 [
   {
-    "id": "ddca6d834408af8019969269189edb7f119e5ff58047090bac5eb48f28230daa",
+    "id": "9e1c5c473be1f5bba203615f4525d18093ba349dcf1945891f6d0f7d97b86865",
     "vector_fields": {
       "signature": "# [doc = \" A 2D point\"] pub struct Point { # [doc = \" x coordinate\"] pub x : i32 , # [doc = \" y coordinate\"] pub y : i32 , }",
       "identifiers": "doc Point x i32 y",
@@ -8,7 +8,7 @@
       "doc_comment": " A 2D point"
     },
     "payload": {
-      "repo_id": "abc",
+      "repo_id": "test/repo",
       "path": "point.rs",
       "kind": "struct",
       "qual_symbol": "crate::point::Point",
@@ -18,7 +18,7 @@
     }
   },
   {
-    "id": "ddca6d834408af8019969269189edb7f119e5ff58047090bac5eb48f28230daa",
+    "id": "9e1c5c473be1f5bba203615f4525d18093ba349dcf1945891f6d0f7d97b86865",
     "vector_fields": {
       "signature": "impl Point",
       "identifiers": "doc Point new x i32 y Self sum self",
@@ -26,7 +26,7 @@
       "doc_comment": " Operations on `Point`"
     },
     "payload": {
-      "repo_id": "abc",
+      "repo_id": "test/repo",
       "path": "point.rs",
       "kind": "impl",
       "qual_symbol": "crate::point::Point",
@@ -36,7 +36,7 @@
     }
   },
   {
-    "id": "0f63f4de191c15bd9527d827909a18e74a9ecfef274d24efffeaeb1a525db05a",
+    "id": "46b11916ccff0a12a02bf7ef952cc072878a5593759a088eb10199450f5ea7a9",
     "vector_fields": {
       "signature": "fn new (x : i32 , y : i32) -> Self",
       "identifiers": "doc new x i32 y Self",
@@ -44,7 +44,7 @@
       "doc_comment": " Create a new Point"
     },
     "payload": {
-      "repo_id": "abc",
+      "repo_id": "test/repo",
       "path": "point.rs",
       "kind": "fn",
       "qual_symbol": "crate::point::Point::new",
@@ -54,7 +54,7 @@
     }
   },
   {
-    "id": "23dfbdaffaed4317d507afc46a6b02e3c6ecd5108a31985d4e4390902535e4ed",
+    "id": "fb40224d13648b0585d6c5988d50ca598d40aa4dd604a98f011fd07a6964349a",
     "vector_fields": {
       "signature": "fn sum (& self) -> i32",
       "identifiers": "doc sum Self i32 self x y",
@@ -62,7 +62,7 @@
       "doc_comment": " Sum coordinates"
     },
     "payload": {
-      "repo_id": "abc",
+      "repo_id": "test/repo",
       "path": "point.rs",
       "kind": "fn",
       "qual_symbol": "crate::point::Point::sum",
@@ -72,7 +72,7 @@
     }
   },
   {
-    "id": "6aed1f487f23217d5193013d6d1a021ea3a8dc3839dcd01bffb003a3526209cb",
+    "id": "95d9811565f0691e1368ea4bf9322fa9719b1ff3d2629dd887ed9423f4666798",
     "vector_fields": {
       "signature": "fn origin () -> Point",
       "identifiers": "doc origin Point x y",
@@ -80,7 +80,7 @@
       "doc_comment": " Free function example"
     },
     "payload": {
-      "repo_id": "abc",
+      "repo_id": "test/repo",
       "path": "point.rs",
       "kind": "fn",
       "qual_symbol": "crate::point::origin",
